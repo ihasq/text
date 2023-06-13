@@ -127,7 +127,7 @@
 				--editor-font-family: Consolas, 'Courier New', Courier, Monaco, monospace;
 				--editor-font-size: 14px;
 				--editor-tab-size: 4;
-				--editor-line-height: 14px;
+				--editor-line-height: 16px;
 
 				--editor-focus-outline: none;
 
@@ -170,7 +170,7 @@
 			<div id="editorGrid">
 				<pre id="editorLine"></pre>
 				<pre id="editor" contenteditable="plaintext-only">
-<span>app</span></pre>
+</pre>
 			</div>
 			<div id="scrollTopBar"></div>
 			<input id="commandline" title="type 'help' for more info"/>
@@ -348,8 +348,15 @@
 													break;
 
 													case "Enter":
-													case "Backspace":
 														globalThis.editor.action.refreshEditorLine();
+													break;
+
+													case "Backspace":
+														if(globalThis.editor.element.surface.textContent.length == 1) {
+															event.preventDefault();
+														} else {
+															globalThis.editor.action.refreshEditorLine();
+														}
 													break;
 												
 												}
@@ -493,7 +500,7 @@
 
 						new() {
 							globalThis.editor.file.fileHandle = null;
-							globalThis.editor.element.surface.textContent = "\0";
+							globalThis.editor.element.surface.textContent = "\n";
 						},
 
 						cmd(arg) {
@@ -523,21 +530,22 @@
 							setTimeout(() => {
 
 								this.buffer = {
-									matchedLine: (globalThis.editor.element.surface.textContent.split(/\n.*/) || [""]).length,
+									matchedLine: (globalThis.editor.element.surface.textContent.split(/.*\n/) || [""]).length,
 									lineDOM: ""
 								};
 
-								this.buffer.lineDigits = this.buffer.matchedLine.toString().length;
-
-								if(this.buffer.lineDigits < globalThis.editor.editorProperty.minimalEditorLineDigits) this.buffer.lineDigits = globalThis.editor.editorProperty.minimalEditorLineDigits;
-
 								if(!(globalThis.editor.editorProperty.editorLine == this.buffer.matchedLine)) {
+
+									this.buffer.lineDigits = this.buffer.matchedLine.toString().length;
+									if(this.buffer.lineDigits < globalThis.editor.editorProperty.minimalEditorLineDigits) this.buffer.lineDigits = globalThis.editor.editorProperty.minimalEditorLineDigits;
+
 									globalThis.editor.editorProperty.editorLine = this.buffer.matchedLine;
+
 									for(let i = 1; i < this.buffer.matchedLine; i++) {
 										this.buffer.lineDOM += ( " ".repeat(this.buffer.lineDigits - i.toString().length) + i + "\n" );
 									};
-									globalThis.editor.element.editorLine.textContent = (this.buffer.lineDOM += "\n".repeat(Math.ceil(document.documentElement.clientHeight / 14) - 2));
-									console.log(globalThis.editor.editorProperty.editorLine);
+									globalThis.editor.element.editorLine.textContent = (this.buffer.lineDOM += "\n".repeat(Math.ceil(document.documentElement.clientHeight / 16) - 2));
+
 								}
 
 							}, 0);
