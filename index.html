@@ -1,0 +1,546 @@
+<!--
+
+	Text v0.0.1
+
+	created and maintained by https://ihasq.com
+
+	editor style settings are modifiable at /html/body/style
+
+-->
+<!DOCTYPE html>
+<html>
+	<head>
+
+		<title>Text (unsaved)</title>
+
+		<meta charset="utf-8"/>
+
+		<style>
+
+			* {
+				user-select: none;
+				box-sizing: border-box;
+			}
+
+			html {
+				height: 100vh;
+				width: 100vw;
+			}
+
+			body, div#wrapper, #editorGrid {
+				height: 100%;
+				width: 100%;
+			}
+
+			html, body, div#wrapper, #editorGrid, #editorLine {
+				padding: 0px;
+				margin: 0px;
+				user-select: none;
+			}
+
+			div#wrapper {
+				position: relative;
+			}
+
+			#editorGrid, #commandline, #scrollTopBar {
+				position: absolute;
+			}
+
+			#editorGrid {
+				z-index: 0;
+				display: grid;
+				grid-template-columns: var(--editor-lineNumber-width) auto;
+				width: 100%;
+				height: 100%;
+				overflow: hidden;
+			}
+
+			#editorLine {
+				font-family: var(--editor-font-family);
+				font-size: var(--editor-font-size);
+				tab-size: var(--editor-tab-size);
+				line-height: var(--editor-line-height);
+
+				color: #556;
+
+				margin: 0px;
+				padding: 6px;
+			}
+
+			#editor {
+
+				font-family: var(--editor-font-family);
+				font-size: var(--editor-font-size);
+				tab-size: var(--editor-tab-size);
+				line-height: var(--editor-line-height);
+
+				user-select: text;
+
+				background-color: #fff;
+				color: #000;
+
+				overflow: hidden;
+
+				height: max-content;
+				min-height: 100%;
+
+				margin: 0px;
+				padding: 6px;
+
+			}
+
+			#editor:focus {
+				outline: var(--editor-focus-outline);
+			}
+
+			#commandline {
+				z-index: 2;
+				top: 10px;
+				left: 30%;
+				right: 30%;
+				width: 40%;
+				
+				border-radius: 3px;
+			}
+
+			#scrollTopBar {
+				z-index: 1;
+				right: 0;
+				width: 4px;
+				height: 50%;
+				background-color: #555;
+				opacity: 70%;
+				border-radius: 2px;
+			}
+
+		</style>
+
+	</head>
+
+	<body>
+
+		<!-- editor style -->
+
+		<style>
+
+			* {
+				--editor-font-family: Consolas, 'Courier New', Courier, Monaco, monospace;
+				--editor-font-size: 14px;
+				--editor-tab-size: 4;
+				--editor-line-height: 14px;
+
+				--editor-focus-outline: none;
+
+				--editor-lineNumber-width: 40px;
+
+				--editor-scrollBar-activeWidth: 16px;
+				--editor-scrollBar-minimalWidth: 4px;
+			}
+
+			/** #editor::selection { ... } */
+
+			#commandline {
+
+				font-family: Consolas, 'Courier New', Courier, Monaco, monospace;
+				font-size: 12px;
+
+				height: 26px;
+
+				border: none;
+
+				padding: 7px;
+
+				background-color: #333;
+
+				color: #fff;
+
+				box-shadow: 0 5px 25px 0 rgba(0, 0, 0, .5);
+
+			}
+
+			#commandline:focus {
+
+				outline: none
+
+			}
+
+		</style>
+
+		<div id="wrapper">
+			<div id="editorGrid">
+				<pre id="editorLine"></pre>
+				<pre id="editor" contenteditable="plaintext-only">
+<span>app</span></pre>
+			</div>
+			<div id="scrollTopBar"></div>
+			<input id="commandline" title="type 'help' for more info"/>
+		</div>
+
+		<script type="text/javascript">
+
+			"use strict";
+
+			{
+				window.editor = {
+
+					userState: "insertion",
+
+					element: {
+						surface: document.getElementById("editor"),
+						commandline: document.getElementById("commandline"),
+						editorGrid: document.getElementById("editorGrid"),
+						editorLine: document.getElementById("editorLine")
+					},
+
+					file: {
+						fileName: "",
+						fileHandle: null,
+					},
+
+					currentBufferId: 0,
+
+					buffer: [
+						{
+							instanceId: 0
+						}
+					],
+
+					command: {
+						arg: [],
+						query: {
+
+							save() {
+								globalThis.editor.action.save();
+							},
+
+							open() {
+								globalThis.editor.action.open();
+							},
+
+							new() {
+								globalThis.editor.action.new();
+							},
+
+							about() {
+								window.open("./about.html", { target: "_blank" })
+							},
+
+							alert() {
+								alert(globalThis.editor.command.arg.join(" "))
+							},
+
+							">": () => {
+
+								globalThis.editor.command.query[globalThis.editor.command.arg[1]]()
+
+							}
+
+						},
+						history: [],
+						historyIndex: 0,
+					},
+
+					editorProperty: {
+						editorLine: 0,
+						focusLine: 1
+					},
+
+					keyProperty: {
+						ctrl: false,
+						shift: false,
+						alt: false
+					},
+
+					selectionProperty: null,
+
+					controlEvent: {
+
+						window: [
+
+							[
+								"beforeunload", event => {
+
+									event.preventDefault();
+									event.returnValue = "";
+
+								}, { passive: false }
+							],
+
+							[
+								"wheel", event => {
+
+									event.preventDefault();
+
+									this.buffer = Object.create(null);
+
+									buffer.top = (!globalThis.editor.keyProperty.shift)? "scrollTop" : "scrollLeft";
+									buffer.left = (!globalThis.editor.keyProperty.shift)? "scrollLeft" : "scrollTop";
+
+									globalThis.editor.element.editorGrid[this.buffer.top] += event.deltaY;
+									globalThis.editor.element.surface[this.buffer.left] += event.deltaX;
+
+								}, { passive: false }
+							],
+
+							[
+								"keydown", event => {
+
+									switch(event.target.id) {
+
+										case "editor": 
+
+											globalThis.editor.keyProperty.ctrl = event.ctrlKey;
+											globalThis.editor.keyProperty.shift = event.shiftKey;
+											globalThis.editor.keyProperty.alt = event.altKey;
+
+											if(globalThis.editor.keyProperty.ctrl) {
+
+												switch(event.code) {
+												
+													case "KeyS":
+														event.preventDefault();
+														globalThis.editor.action.save();
+													break;
+
+													case "KeyO":
+														event.preventDefault();
+														globalThis.editor.action.open();
+													break;
+	
+												}
+											
+											} else {
+											
+												switch(event.code) {
+												
+													case "F1":
+														event.preventDefault();
+														globalThis.editor.userState = "command";
+														globalThis.editor.element.commandline.style.visibility = "visible";
+														globalThis.editor.element.commandline.value = "> "
+														globalThis.editor.action.setFocusTo(globalThis.editor.element.commandline);
+													break;
+												
+													case "Tab":
+														event.preventDefault();
+														globalThis.editor.action.insert("\t");
+													break;
+
+													case "Enter":
+													case "Backspace":
+														globalThis.editor.action.refreshEditorLine();
+													break;
+												
+												}
+											
+											};
+
+										break;
+
+										case "commandline":
+
+											switch(event.code) {
+
+												case "Enter":
+													event.preventDefault();
+													globalThis.editor.action.cmd(globalThis.editor.element.commandline.value);
+													globalThis.editor.element.commandline.value = "";
+												break;
+
+												case "Escape":
+													event.preventDefault();
+													globalThis.editor.action.setFocusTo(globalThis.editor.element.surface);
+												break;
+											
+											}
+
+										break;
+									}
+								}, { passive: false }
+							],
+
+
+							[
+								"keyup", event => {
+
+									switch(event.target.id) {
+
+										case "editor":
+
+											globalThis.editor.keyProperty.ctrl = event.ctrlKey;
+											globalThis.editor.keyProperty.shift = event.shiftKey;
+											globalThis.editor.keyProperty.alt = event.altKey;
+											
+										break;
+									}
+
+								}, { passive: true }
+							],
+						],
+
+						surface: [
+
+							[
+								"focus", event => {
+
+									globalThis.editor.element.commandline.value = "";
+									globalThis.editor.element.commandline.style.visibility = "hidden";
+								
+								}, { passive: false }
+							],
+
+							[
+								"mousedown", event => {
+									globalThis.editor.editorProperty.focusLine = globalThis.editor.selectionProperty
+									if(event.button === 1) {
+										event.preventDefault();
+									}
+								}, { passive: false }
+							],
+
+							[
+								"mouseup", event => {
+
+									globalThis.editor.selectionProperty = document.getSelection();
+
+								}, { passive: true }
+							],
+
+							[
+								"mousemove", event => {
+									if(event.clientX >= (document.body.clientWidth - document.documentElement.style.getPropertyValue("--editor-scrollBar-activeWidth"))) {
+										console.log("ahh")
+									}
+								}, { passive: true }
+							],
+
+						],
+					},
+
+					action: {
+
+						save: async () => {
+							try {
+
+								this.buffer = Object.create(null);
+
+								if(!globalThis.editor.file.fileHandle) {
+									globalThis.editor.file.fileHandle = await window.showSaveFilePicker({
+										types: [
+											{
+												description: "Text file",
+												accept: { "text/*": [] }
+											}
+										]
+									});
+								}
+								this.buffer.writable = await globalThis.editor.file.fileHandle.createWritable();
+								await this.buffer.writable.write(globalThis.editor.element.surface.textContent);
+								await this.buffer.writable.close();
+							} catch {}
+						},
+
+						open: async () => {
+							try {
+
+								this.buffer = Object.create(null);
+
+								[globalThis.editor.file.fileHandle] = await window.showOpenFilePicker({
+									types: [{
+										description: "Text file",
+										accept: {
+											"text/*": [],
+											"application/*": []
+										},
+									}],
+									excludeAcceptAllOption: true,
+									multiple: false
+								});
+								document.title = globalThis.editor.file.fileHandle.name;
+								this.buffer.result = new FileReader;
+								this.buffer.result.readAsText(await globalThis.editor.file.fileHandle.getFile(), "UTF-8");
+								this.buffer.result.onload = event => {
+									globalThis.editor.element.surface.textContent = event.target.result;
+									globalThis.editor.action.refreshEditorLine();
+								};
+								globalThis.editor.file.isOpenedFromFS = true;
+							} catch {}
+						},
+
+						new() {
+							globalThis.editor.file.fileHandle = null;
+							globalThis.editor.element.surface.textContent = "\0";
+						},
+
+						cmd(arg) {
+							if(typeof arg === "string") {
+								globalThis.editor.command.arg = arg.split(" ");
+								globalThis.editor.command.history.unshift(globalThis.editor.command.arg);
+								globalThis.editor.command.query[globalThis.editor.command.arg[0]]();
+							}
+						},
+
+						setCaretPos(anchorOffset) {
+							window.getSelection().setPosition(globalThis.editor.selectionProperty.anchorNode, anchorOffset);
+						},
+
+						insert(string) {
+							globalThis.editor.selectionProperty.anchorNode.insertData(globalThis.editor.selectionProperty.anchorOffset, string);
+							globalThis.editor.action.setCaretPos(globalThis.editor.selectionProperty.anchorOffset + 1);
+							globalThis.editor.action.refreshEditorLine();
+						},
+
+						setFocusTo(document) {
+							setTimeout(document.focus(), 0);
+						},
+
+						refreshEditorLine() {
+
+							setTimeout(() => {
+
+								this.buffer = {
+									matchedLine: (globalThis.editor.element.surface.textContent.match(/\n/g) || [""]).length,
+									lineDOM: ""
+								};
+
+								if(!(globalThis.editor.editorProperty.editorLine == this.buffer.matchedLine)) {
+									globalThis.editor.editorProperty.editorLine = this.buffer.matchedLine;
+									for(let i = 1; i <= this.buffer.matchedLine; i++) {
+										this.buffer.lineDOM += ( " ".repeat(3 - i.toString().length) + i + "\n" );
+									};
+									globalThis.editor.element.editorLine.textContent = (this.buffer.lineDOM += "\n".repeat(Math.ceil(document.documentElement.clientHeight / 14) - 2));
+									console.log(globalThis.editor.editorProperty.editorLine);
+								}
+
+							}, 0);
+
+						},
+
+						createInstance(init) {
+							globalThis.editor.buffer.push(init)
+						},
+
+					},
+
+				};
+
+				window.onload = () => {
+
+					editor.element.commandline.style.visibility = "hidden";
+
+					editor.controlEvent.window.forEach(index => window.addEventListener(...index));
+
+					Object.keys(editor.element).forEach(component => { if(!!editor.controlEvent[component]) {
+						editor.controlEvent[component].forEach(index => {
+							editor.element[component].addEventListener(...index);
+						});
+					}})
+
+					editor.action.setFocusTo(editor.element.surface);
+				}
+
+			};
+
+		</script>
+	</body>
+</html>
