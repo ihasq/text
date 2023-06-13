@@ -18,7 +18,6 @@
 		<style>
 
 			* {
-				user-select: none;
 				box-sizing: border-box;
 			}
 
@@ -87,8 +86,7 @@
 
 				cursor: text;
 
-
-				user-select: none;
+				user-select: auto;
 
 			}
 
@@ -176,7 +174,7 @@
 			<div id="editorGrid">
 				<pre id="editorLine"></pre>
 				<pre id="editor">
-<span class="lineWrapper"><span id="editSpan" contenteditable="plaintext-only"></span></span>
+<span class="lineWrapper active"><span class="activeLineBeforeCaret">function</span><span id="editSpan" contenteditable="plaintext-only"></span><span class="activeLineAfterCaret"> main()</span></span>
 <span class="lineWrapper">a</span>
 <span class="lineWrapper">a</span>
 </pre>
@@ -209,6 +207,7 @@
 
 					buffer: {
 						currentControlQueue: [],
+						textData: "",
 						instances: {
 							0: {
 								edit: {
@@ -273,197 +272,142 @@
 
 					selectionProperty: null,
 
-					controlEvent: {
+					controlEvent: [
 
-						window: [
+						[
+							"beforeunload", event => {
+								event.preventDefault();
+								event.returnValue = "";
+							}, { passive: false }
+						],
 
-							[
-								"beforeunload", event => {
+						[
+							"wheel", event => {
+								event.preventDefault();
+								this.buffer = Object.create(null);
+								this.buffer.isShiftUnpressed = !globalThis.editor.keyProperty.shift;
+								this.buffer.top = (this.buffer.isShiftUnpressed)? "deltaY" : "deltaX";
+								this.buffer.left = (this.buffer.isShiftUnpressed)? "deltaX" : "deltaY";
+								globalThis.editor.element.editorGrid.scrollTop += event[this.buffer.top];
+								globalThis.editor.element.surface.scrollLeft += event[this.buffer.left];
+							}, { passive: false }
+						],
 
-									event.preventDefault();
-									event.returnValue = "";
-
-								}, { passive: false }
-							],
-
-							[
-								"wheel", event => {
-
-									event.preventDefault();
-
-									this.buffer = Object.create(null);
-
-									this.buffer.isShiftUnpressed = !globalThis.editor.keyProperty.shift;
-
-									this.buffer.top = (this.buffer.isShiftUnpressed)? "deltaY" : "deltaX";
-									this.buffer.left = (this.buffer.isShiftUnpressed)? "deltaX" : "deltaY";
-
-									globalThis.editor.element.editorGrid.scrollTop += event[this.buffer.top];
-									globalThis.editor.element.surface.scrollLeft += event[this.buffer.left];
-
-								}, { passive: false }
-							],
-
-							[
-								"keydown", event => {
-
-									switch(event.target.id) {
-
-										case "editor":
-
-											globalThis.editor.keyProperty.ctrl = event.ctrlKey;
-											globalThis.editor.keyProperty.shift = event.shiftKey;
-											globalThis.editor.keyProperty.alt = event.altKey;
-
-
-											if(globalThis.editor.keyProperty.ctrl) {
-
-												switch(event.code) {
-												
-													case "KeyS":
-														event.preventDefault();
-														globalThis.editor.action.save();
-													break;
-
-													case "KeyO":
-														event.preventDefault();
-														globalThis.editor.action.open();
-													break;
-
-													case "KeyZ":
-														event.preventDefault();
-													break;
-	
-												}
-											
-											} else {
-											
-												switch(event.code) {
-												
-													case "F1":
-														event.preventDefault();
-														globalThis.editor.userState = "command";
-														globalThis.editor.element.commandline.style.visibility = "visible";
-														globalThis.editor.element.commandline.value = "> "
-														globalThis.editor.action.setFocusTo(globalThis.editor.element.commandline);
-													break;
-												
-													case "Tab":
-														event.preventDefault();
-														globalThis.editor.action.insert("\t");
-													break;
-
-													case "Backspace":
-														if(globalThis.editor.element.surface.textContent.length == 1) {
-															event.preventDefault();
-														} else {
-															globalThis.editor.action.refreshEditorLine();
-														}
-													break;
-												
-												}
-											
-											};
-
-										break;
-
-										case "commandline":
-
-											switch(event.code) {
-
-												case "Enter":
-													event.preventDefault();
-													globalThis.editor.action.cmd(globalThis.editor.element.commandline.value);
-													globalThis.editor.element.commandline.value = "";
-												break;
-
-												case "Escape":
-													event.preventDefault();
-													globalThis.editor.action.setFocusTo(globalThis.editor.element.surface);
-												break;
-											
-											}
-
-										break;
-
-										case "editSpan":
-
-											switch(event.code) {
-
-												case "Enter":
-													event.preventDefault();
-													globalThis.editor.action.refreshEditorLine();
-												break;
-
-											}
-
-										break;
-									}
-								}, { passive: false }
-							],
-
-							[
-								"keyup", event => {
-
-									switch(event.target.id) {
-
-										case "editor":
-
-											globalThis.editor.keyProperty.ctrl = event.ctrlKey;
-											globalThis.editor.keyProperty.shift = event.shiftKey;
-											globalThis.editor.keyProperty.alt = event.altKey;
-											
-										break;
-									}
-
-								}, { passive: true }
-							],
-
-							[
-								"click", event => {
-
-									switch(event.target.id) {
-
-										case "editor":
-											if(!(document.activeElement == globalThis.editor.element.editSpan)) {
-												globalThis.editor.element.editSpan = document.getElementById("editSpan");
-												globalThis.editor.element.editSpan.focus();
-											}
-									}
-
+						[
+							"keydown", event => {
+								switch(event.code) {
+									case "F1":
+										event.preventDefault();
+										globalThis.editor.userState = "command";
+										globalThis.editor.element.commandline.style.visibility = "visible";
+										globalThis.editor.element.commandline.value = "> "
+										globalThis.editor.action.setFocusTo(globalThis.editor.element.commandline);
+									break;
 								}
-							]
+								switch(event.target.id) {
+									case "editor":
+										globalThis.editor.keyProperty.ctrl = event.ctrlKey;
+										globalThis.editor.keyProperty.shift = event.shiftKey;
+										globalThis.editor.keyProperty.alt = event.altKey;
+										if(globalThis.editor.keyProperty.ctrl) {
+											switch(event.code) {
+											
+												case "KeyS":
+													event.preventDefault();
+													globalThis.editor.action.save();
+												break;
+												case "KeyO":
+													event.preventDefault();
+													globalThis.editor.action.open();
+												break;
+												case "KeyZ":
+													event.preventDefault();
+												break;
+
+											}
+										
+										} else {
+										
+											switch(event.code) {
+											
+												case "Tab":
+													event.preventDefault();
+													globalThis.editor.action.insert("\t");
+												break;
+												case "Backspace":
+													if(globalThis.editor.element.surface.textContent.length == 1) {
+														event.preventDefault();
+													} else {
+														globalThis.editor.action.refreshEditorLine();
+													}
+												break;
+											
+											}
+										
+										};
+									break;
+									case "commandline":
+										switch(event.code) {
+											case "Enter":
+												event.preventDefault();
+												globalThis.editor.action.cmd(globalThis.editor.element.commandline.value);
+												globalThis.editor.element.commandline.value = "";
+											break;
+											case "Escape":
+												event.preventDefault();
+												document.activeElement.blur();
+												globalThis.editor.element.commandline.style.visibility = "hidden";
+												globalThis.editor.element.editSpan.focus();
+											break;
+										
+										}
+									break;
+									case "editSpan":
+										switch(event.code) {
+											case "Enter":
+												event.preventDefault();
+												globalThis.editor.action.refreshEditorLine();
+											break;
+										}
+									break;
+								}
+							}, { passive: false }
 						],
 
-						surface: [
-
-							[
-								"focus", event => {
-
-									globalThis.editor.element.commandline.value = "";
-									globalThis.editor.element.commandline.style.visibility = "hidden";
-								
-								}, { passive: false }
-							],
-
-							[
-								"mouseup", event => {
-
-									globalThis.editor.selectionProperty = document.getSelection();
-
-								}, { passive: true }
-							],
-
-							[
-								"mousemove", event => {
-									if(event.clientX >= (document.body.clientWidth - document.documentElement.style.getPropertyValue("--editor-scrollBar-activeWidth"))) {
-										console.log("ahh")
-									}
-								}, { passive: true }
-							],
-
+						[
+							"keyup", event => {
+								switch(event.target.id) {
+									case "editor":
+										globalThis.editor.keyProperty.ctrl = event.ctrlKey;
+										globalThis.editor.keyProperty.shift = event.shiftKey;
+										globalThis.editor.keyProperty.alt = event.altKey;
+										
+									break;
+								}
+							}, { passive: true }
 						],
-					},
+
+						[
+							"mousedown", event => {
+								switch(event.target.id) {
+									case "editor":
+										document.activeElement.blur();
+									break;
+								}
+							}
+						],
+
+						[
+							"mouseup", event => {
+								switch(event.target.id) {
+									case "editor":
+										globalThis.editor.element.editSpan = document.getElementById("editSpan");
+										globalThis.editor.element.editSpan.focus();
+									break;
+								}
+							}
+						]
+					],
 
 					action: {
 
@@ -520,7 +464,8 @@
 
 						new() {
 							globalThis.editor.file.fileHandle = null;
-							globalThis.editor.element.surface.innerHTML = "<span>\n</span>";
+							globalThis.editor.element.surface.innerHTML = "<span class=\"lineWrapper active\"><span id=\"editSpan\" contenteditable=\"plaintext-only\"></span></span>";
+							globalThis.editor.action.refreshEditorLine();
 						},
 
 						cmd(arg) {
@@ -590,13 +535,7 @@
 
 					editor.element.commandline.style.visibility = "hidden";
 
-					editor.controlEvent.window.forEach(index => window.addEventListener(...index));
-
-					Object.keys(editor.element).forEach(component => { if(!!editor.controlEvent[component]) {
-						editor.controlEvent[component].forEach(index => {
-							editor.element[component].addEventListener(...index);
-						});
-					}})
+					editor.controlEvent.forEach(index => window.addEventListener(...index));
 
 					editor.action.setFocusTo(editor.element.surface);
 
