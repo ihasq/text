@@ -26,18 +26,18 @@
 				width: 100vw;
 			}
 
-			body, div#wrapper, #editorGrid {
+			body, div.wrapper, #editorGrid {
 				height: 100%;
 				width: 100%;
 			}
 
-			html, body, div#wrapper, #editorGrid, #editorLine {
+			html, body, div.wrapper, #editorGrid, #editorLine {
 				padding: 0px;
 				margin: 0px;
 				user-select: none;
 			}
 
-			div#wrapper {
+			div.wrapper {
 				position: relative;
 			}
 
@@ -170,14 +170,10 @@
 
 		</style>
 
-		<div id="wrapper">
+		<div class="wrapper" id="activeWrapper">
 			<div id="editorGrid">
 				<pre id="editorLine"></pre>
-				<pre id="editor">
-<span class="lineWrapper active"><span class="activeLineBeforeCaret">function</span><span id="editSpan" contenteditable="plaintext-only"></span><span class="activeLineAfterCaret"> main()</span></span>
-<span class="lineWrapper">a</span>
-<span class="lineWrapper">a</span>
-</pre>
+				<pre id="editor"></pre>
 			</div>
 			<div id="scrollTopBar"></div>
 			<input id="commandline" title="type 'help' for more info"/>
@@ -295,6 +291,7 @@
 
 						[
 							"keydown", event => {
+
 								switch(event.code) {
 									case "F1":
 										event.preventDefault();
@@ -304,7 +301,9 @@
 										globalThis.editor.action.setFocusTo(globalThis.editor.element.commandline);
 									break;
 								}
+
 								switch(event.target.id) {
+
 									case "editor":
 										globalThis.editor.keyProperty.ctrl = event.ctrlKey;
 										globalThis.editor.keyProperty.shift = event.shiftKey;
@@ -346,7 +345,9 @@
 										
 										};
 									break;
+
 									case "commandline":
+
 										switch(event.code) {
 											case "Enter":
 												event.preventDefault();
@@ -362,15 +363,20 @@
 										
 										}
 									break;
+
 									case "editSpan":
+
 										switch(event.code) {
 											case "Enter":
 												event.preventDefault();
 												globalThis.editor.action.refreshEditorLine();
 											break;
 										}
+
 									break;
+
 								}
+
 							}, { passive: false }
 						],
 
@@ -538,6 +544,8 @@
 					editor.controlEvent.forEach(index => window.addEventListener(...index));
 
 					editor.action.setFocusTo(editor.element.surface);
+
+					editor.action.new();
 
 					editor.action.refreshEditorLine();
 				}
