@@ -197,39 +197,46 @@
 						fileHandle: null,
 					},
 
-					currentBufferId: 0,
-
-					buffer: [
-						{
-							instanceId: 0
+					buffer: {
+						currentControlQueue: [],
+						instances: {
+							0: {
+								edit: {
+									history: [
+										{
+											actionType: "insert"
+										}
+									]
+								}
+							}
 						}
-					],
+					},
 
 					command: {
 						arg: [],
 						query: {
 
-							save() {
+							"save"() {
 								globalThis.editor.action.save();
 							},
 
-							open() {
-								globalThis.editor.action.open();
+							"open"() {
+								globalThis.editor.action.open("UTF-8");
 							},
 
-							new() {
+							"new"() {
 								globalThis.editor.action.new();
 							},
 
-							about() {
+							"about"() {
 								window.open("./about.html", { target: "_blank" })
 							},
 
-							alert() {
+							"alert"() {
 								alert(globalThis.editor.command.arg.join(" "))
 							},
 
-							">": () => {
+							">"() {
 
 								globalThis.editor.command.query[globalThis.editor.command.arg[1]]()
 
@@ -242,7 +249,10 @@
 
 					editorProperty: {
 						editorLine: 0,
-						focusLine: 1
+						focusLine: 1,
+						lastKeyDownedTimestamp: -1,
+						currentBufferId: -1,
+						minimalEditorLineDigits: 3
 					},
 
 					keyProperty: {
@@ -273,11 +283,13 @@
 
 									this.buffer = Object.create(null);
 
-									buffer.top = (!globalThis.editor.keyProperty.shift)? "scrollTop" : "scrollLeft";
-									buffer.left = (!globalThis.editor.keyProperty.shift)? "scrollLeft" : "scrollTop";
+									this.buffer.isShiftUnpressed = !globalThis.editor.keyProperty.shift;
 
-									globalThis.editor.element.editorGrid[this.buffer.top] += event.deltaY;
-									globalThis.editor.element.surface[this.buffer.left] += event.deltaX;
+									this.buffer.top = (this.buffer.isShiftUnpressed)? "deltaY" : "deltaX";
+									this.buffer.left = (this.buffer.isShiftUnpressed)? "deltaX" : "deltaY";
+
+									globalThis.editor.element.editorGrid.scrollTop += event[this.buffer.top];
+									globalThis.editor.element.surface.scrollLeft += event[this.buffer.left];
 
 								}, { passive: false }
 							],
@@ -287,11 +299,16 @@
 
 									switch(event.target.id) {
 
-										case "editor": 
+										case "editor":
+
+											setTimeout(() => {
+												globalThis.editor.buffer.currentControlQueue.push([event.key, Date.now()])
+											}, 0);
 
 											globalThis.editor.keyProperty.ctrl = event.ctrlKey;
 											globalThis.editor.keyProperty.shift = event.shiftKey;
 											globalThis.editor.keyProperty.alt = event.altKey;
+
 
 											if(globalThis.editor.keyProperty.ctrl) {
 
@@ -305,6 +322,10 @@
 													case "KeyO":
 														event.preventDefault();
 														globalThis.editor.action.open();
+													break;
+
+													case "KeyZ":
+														event.preventDefault();
 													break;
 	
 												}
@@ -440,7 +461,7 @@
 							} catch {}
 						},
 
-						open: async () => {
+						open: async (readAs) => {
 							try {
 
 								this.buffer = Object.create(null);
@@ -457,13 +478,16 @@
 									multiple: false
 								});
 								document.title = globalThis.editor.file.fileHandle.name;
+
 								this.buffer.result = new FileReader;
-								this.buffer.result.readAsText(await globalThis.editor.file.fileHandle.getFile(), "UTF-8");
+								this.buffer.result.readAsText(await globalThis.editor.file.fileHandle.getFile(), (readAs || "UTF-8"));
 								this.buffer.result.onload = event => {
 									globalThis.editor.element.surface.textContent = event.target.result;
 									globalThis.editor.action.refreshEditorLine();
 								};
+
 								globalThis.editor.file.isOpenedFromFS = true;
+
 							} catch {}
 						},
 
@@ -499,14 +523,18 @@
 							setTimeout(() => {
 
 								this.buffer = {
-									matchedLine: (globalThis.editor.element.surface.textContent.match(/\n/g) || [""]).length,
+									matchedLine: (globalThis.editor.element.surface.textContent.split(/\n.*/) || [""]).length,
 									lineDOM: ""
 								};
 
+								this.buffer.lineDigits = this.buffer.matchedLine.toString().length;
+
+								if(this.buffer.lineDigits < globalThis.editor.editorProperty.minimalEditorLineDigits) this.buffer.lineDigits = globalThis.editor.editorProperty.minimalEditorLineDigits;
+
 								if(!(globalThis.editor.editorProperty.editorLine == this.buffer.matchedLine)) {
 									globalThis.editor.editorProperty.editorLine = this.buffer.matchedLine;
-									for(let i = 1; i <= this.buffer.matchedLine; i++) {
-										this.buffer.lineDOM += ( " ".repeat(3 - i.toString().length) + i + "\n" );
+									for(let i = 1; i < this.buffer.matchedLine; i++) {
+										this.buffer.lineDOM += ( " ".repeat(this.buffer.lineDigits - i.toString().length) + i + "\n" );
 									};
 									globalThis.editor.element.editorLine.textContent = (this.buffer.lineDOM += "\n".repeat(Math.ceil(document.documentElement.clientHeight / 14) - 2));
 									console.log(globalThis.editor.editorProperty.editorLine);
@@ -519,6 +547,10 @@
 						createInstance(init) {
 							globalThis.editor.buffer.push(init)
 						},
+
+						pushHistory() {
+
+						}
 
 					},
 
