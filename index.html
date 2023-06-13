@@ -74,8 +74,6 @@
 				tab-size: var(--editor-tab-size);
 				line-height: var(--editor-line-height);
 
-				user-select: text;
-
 				background-color: #fff;
 				color: #000;
 
@@ -86,6 +84,11 @@
 
 				margin: 0px;
 				padding: 6px;
+
+				cursor: text;
+
+
+				user-select: none;
 
 			}
 
@@ -113,6 +116,9 @@
 				border-radius: 2px;
 			}
 
+			#editSpan:focus {
+				outline: none;
+			}
 		</style>
 
 	</head>
@@ -169,7 +175,10 @@
 		<div id="wrapper">
 			<div id="editorGrid">
 				<pre id="editorLine"></pre>
-				<pre id="editor" contenteditable="plaintext-only">
+				<pre id="editor">
+<span class="lineWrapper"><span id="editSpan" contenteditable="plaintext-only"></span></span>
+<span class="lineWrapper">a</span>
+<span class="lineWrapper">a</span>
 </pre>
 			</div>
 			<div id="scrollTopBar"></div>
@@ -189,7 +198,8 @@
 						surface: document.getElementById("editor"),
 						commandline: document.getElementById("commandline"),
 						editorGrid: document.getElementById("editorGrid"),
-						editorLine: document.getElementById("editorLine")
+						editorLine: document.getElementById("editorLine"),
+						editSpan: document.getElementById("editSpan")
 					},
 
 					file: {
@@ -301,10 +311,6 @@
 
 										case "editor":
 
-											setTimeout(() => {
-												globalThis.editor.buffer.currentControlQueue.push([event.key, Date.now()])
-											}, 0);
-
 											globalThis.editor.keyProperty.ctrl = event.ctrlKey;
 											globalThis.editor.keyProperty.shift = event.shiftKey;
 											globalThis.editor.keyProperty.alt = event.altKey;
@@ -347,10 +353,6 @@
 														globalThis.editor.action.insert("\t");
 													break;
 
-													case "Enter":
-														globalThis.editor.action.refreshEditorLine();
-													break;
-
 													case "Backspace":
 														if(globalThis.editor.element.surface.textContent.length == 1) {
 															event.preventDefault();
@@ -383,10 +385,22 @@
 											}
 
 										break;
+
+										case "editSpan":
+
+											switch(event.code) {
+
+												case "Enter":
+													event.preventDefault();
+													globalThis.editor.action.refreshEditorLine();
+												break;
+
+											}
+
+										break;
 									}
 								}, { passive: false }
 							],
-
 
 							[
 								"keyup", event => {
@@ -404,6 +418,21 @@
 
 								}, { passive: true }
 							],
+
+							[
+								"click", event => {
+
+									switch(event.target.id) {
+
+										case "editor":
+											if(!(document.activeElement == globalThis.editor.element.editSpan)) {
+												globalThis.editor.element.editSpan = document.getElementById("editSpan");
+												globalThis.editor.element.editSpan.focus();
+											}
+									}
+
+								}
+							]
 						],
 
 						surface: [
@@ -414,15 +443,6 @@
 									globalThis.editor.element.commandline.value = "";
 									globalThis.editor.element.commandline.style.visibility = "hidden";
 								
-								}, { passive: false }
-							],
-
-							[
-								"mousedown", event => {
-									globalThis.editor.editorProperty.focusLine = globalThis.editor.selectionProperty
-									if(event.button === 1) {
-										event.preventDefault();
-									}
 								}, { passive: false }
 							],
 
@@ -500,7 +520,7 @@
 
 						new() {
 							globalThis.editor.file.fileHandle = null;
-							globalThis.editor.element.surface.textContent = "\n";
+							globalThis.editor.element.surface.innerHTML = "<span>\n</span>";
 						},
 
 						cmd(arg) {
@@ -530,9 +550,11 @@
 							setTimeout(() => {
 
 								this.buffer = {
-									matchedLine: (globalThis.editor.element.surface.textContent.split(/.*\n/) || [""]).length,
+									matchedLine: document.getElementsByClassName("lineWrapper").length,
 									lineDOM: ""
 								};
+
+								console.log(this.buffer.matchedLine)
 
 								if(!(globalThis.editor.editorProperty.editorLine == this.buffer.matchedLine)) {
 
@@ -541,7 +563,7 @@
 
 									globalThis.editor.editorProperty.editorLine = this.buffer.matchedLine;
 
-									for(let i = 1; i < this.buffer.matchedLine; i++) {
+									for(let i = 1; i <= this.buffer.matchedLine; i++) {
 										this.buffer.lineDOM += ( " ".repeat(this.buffer.lineDigits - i.toString().length) + i + "\n" );
 									};
 									globalThis.editor.element.editorLine.textContent = (this.buffer.lineDOM += "\n".repeat(Math.ceil(document.documentElement.clientHeight / 16) - 2));
@@ -577,6 +599,8 @@
 					}})
 
 					editor.action.setFocusTo(editor.element.surface);
+
+					editor.action.refreshEditorLine();
 				}
 
 			};
