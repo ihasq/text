@@ -1,2 +1,0 @@
-- name: Minify Css Js and Html files in GitHub Action
-  uses: amireshoon/minifyAction@v1.1
