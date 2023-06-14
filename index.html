@@ -7,6 +7,7 @@
 	editor style settings are modifiable at /html/body/style
 
 -->
+
 <!DOCTYPE html>
 <html>
 	<head>
@@ -119,7 +120,7 @@
 			}
 
 			span#caret[blink="on"] {
-				outline: 1px solid #000;
+				outline: var(--editor-caret-style);
 			}
 
 			span#caret[blink="off"] {
@@ -149,6 +150,8 @@
 				--editor-font-size: 14px;
 				--editor-tab-size: 4;
 				--editor-line-height: 16px;
+
+				--editor-caret-style: 1px solid #000;
 
 				--editor-focus-outline: none;
 
@@ -215,25 +218,79 @@
 						editorCaret: document.getElementById("caret")
 					},
 
-					file: {
+					buffer: {
+
 						fileName: "",
 						fileHandle: null,
-					},
 
-					buffer: {
 						currentControlQueue: [],
 						textData: "",
-						instances: {
-							0: {
-								edit: {
-									history: [
+
+						open: async (readAs) => {
+
+							try {
+
+								let temp = Object.create(null);
+
+								[this.fileHandle] = await window.showOpenFilePicker({
+									types: [
 										{
-											actionType: "insert"
+											description: "Text file",
+											accept: {
+												"text/*": [],
+												"application/*": []
+											},
 										}
-									]
-								}
-							}
+									],
+									excludeAcceptAllOption: true,
+									multiple: false
+								});
+
+								document.title = this.fileHandle.name;
+
+								temp.result = new FileReader;
+								temp.result.readAsText(await this.fileHandle.getFile(), (readAs || "UTF-8"));
+								temp.result.onload = event => {
+									document.getElementById("input").value = event.target.result;
+									globalThis.editor.action.refresh();
+								};
+
+							} catch {}
 						},
+
+						save: async () => {
+
+							try {
+
+								let temp = Object.create(null);
+
+								if(!this.fileHandle) {
+									this.fileHandle = await window.showSaveFilePicker({
+										types: [
+											{
+												description: "Text file",
+												accept: {
+													"text/*": []
+												}
+											}
+										]
+									});
+								}
+								temp.writable = await this.fileHandle.createWritable();
+								await temp.writable.write(this.textData);
+								await temp.writable.close();
+
+							} catch {}
+
+						},
+
+						new() {
+							this.fileHandle = null;
+							document.getElementById("input").value = "";
+							globalThis.editor.element.surface.innerHTML = "<span class=\"lineWrapper active\"><span id=\"caret\" blink=\"on\"></span> </span>";
+							globalThis.editor.action.refresh();
+						},
+
 					},
 
 					command: {
@@ -241,15 +298,15 @@
 						query: {
 
 							"save"() {
-								globalThis.editor.action.save();
+								globalThis.editor.buffer.save();
 							},
 
 							"open"() {
-								globalThis.editor.action.open("UTF-8");
+								globalThis.editor.buffer.open();
 							},
 
 							"new"() {
-								globalThis.editor.action.new();
+								globalThis.editor.buffer.new();
 							},
 
 							"about"() {
@@ -295,20 +352,26 @@
 
 						[
 							"beforeunload", event => {
+
 								event.preventDefault();
 								event.returnValue = "";
+
 							}, { passive: false }
 						],
 
 						[
 							"wheel", event => {
+
 								event.preventDefault();
+							
 								this.buffer = Object.create(null);
 								this.buffer.isShiftUnpressed = !globalThis.editor.keyProperty.shift;
 								this.buffer.top = (this.buffer.isShiftUnpressed)? "deltaY" : "deltaX";
 								this.buffer.left = (this.buffer.isShiftUnpressed)? "deltaX" : "deltaY";
+
 								globalThis.editor.element.editorGrid.scrollTop += event[this.buffer.top];
 								globalThis.editor.element.surface.scrollLeft += event[this.buffer.left];
+
 							}, { passive: false }
 						],
 
@@ -316,16 +379,27 @@
 							"keydown", event => {
 
 								switch(event.code) {
+
 									case "F1":
 										event.preventDefault();
 										globalThis.editor.userState = "command";
 										globalThis.editor.element.commandline.style.visibility = "visible";
 										globalThis.editor.element.commandline.value = "> "
-										globalThis.editor.action.setFocusTo(globalThis.editor.element.commandline);
+										globalThis.editor.element.commandline.focus();
 									break;
+
 								}
 
 								switch(event.target.id) {
+
+									case "input":
+										switch(event.code) {
+											case "Tab":
+
+											break;
+										};
+										globalThis.editor.action.refresh();
+									break;
 
 									case "editor":
 										globalThis.editor.keyProperty.ctrl = event.ctrlKey;
@@ -346,7 +420,6 @@
 											
 												case "Tab":
 													event.preventDefault();
-													globalThis.editor.action.insert("\t");
 												break;
 												case "Backspace":
 													if(globalThis.editor.element.surface.textContent.length == 1) {
@@ -379,10 +452,6 @@
 										}
 									break;
 
-									case "input":
-										globalThis.editor.action.refresh();
-									break;
-
 								}
 
 							}, { passive: false }
@@ -405,6 +474,9 @@
 							"mouseup", event => {
 								switch(event.target.id) {
 									case "editor":
+										event.preventDefault();
+										document.activeElement.blur();
+										globalThis.editor.element.commandline.style.visibility = "hidden";
 										globalThis.editor.element.input.focus();
 									break;
 								}
@@ -420,92 +492,25 @@
 
 								globalThis.editor.buffer.textData = globalThis.editor.element.input.value;
 
-								console.log(globalThis.editor.buffer.textData)
-
 								this.buffer = {
 									matchedLine: globalThis.editor.buffer.textData.split("\n").length,
 									lineDOM: "",
 								};
 
-								this.buffer.manipulationIndex = this.buffer.matchedLine - globalThis.editor.editorProperty.editorLine;
-
-								if(this.buffer.manipulationIndex > 0) {
+								if(!(globalThis.editor.editorProperty.editorLine == this.buffer.matchedLine)) {
 
 									this.buffer.lineDigits = this.buffer.matchedLine.toString().length;
 									if(this.buffer.lineDigits < globalThis.editor.editorProperty.minimalEditorLineDigits) this.buffer.lineDigits = globalThis.editor.editorProperty.minimalEditorLineDigits;
 
+									for(let i = 1; i <= this.buffer.matchedLine; i++) this.buffer.lineDOM += ( " ".repeat(this.buffer.lineDigits - i.toString().length) + i + "\n" );
+
+									globalThis.editor.element.editorLine.textContent = (this.buffer.lineDOM += "\n".repeat(Math.ceil(document.documentElement.clientHeight / 16) - 2));
 									globalThis.editor.editorProperty.editorLine = this.buffer.matchedLine;
 
-									for(let i = 1; i <= this.buffer.matchedLine; i++) {
-										this.buffer.lineDOM += ( " ".repeat(this.buffer.lineDigits - i.toString().length) + i + "\n" );
-									};
-									globalThis.editor.element.editorLine.textContent += (this.buffer.lineDOM += "\n".repeat(Math.ceil(document.documentElement.clientHeight / 16) - 2));
-
-								} else if(this.buffer.manipulationIndex < 0) {
-
-								}
+								};
 
 							}, 0);
 
-						},
-
-						save: async () => {
-							try {
-
-								this.buffer = Object.create(null);
-
-								if(!globalThis.editor.file.fileHandle) {
-									globalThis.editor.file.fileHandle = await window.showSaveFilePicker({
-										types: [
-											{
-												description: "Text file",
-												accept: { "text/*": [] }
-											}
-										]
-									});
-								}
-								this.buffer.writable = await globalThis.editor.file.fileHandle.createWritable();
-								await this.buffer.writable.write(globalThis.editor.element.surface.textContent);
-								await this.buffer.writable.close();
-							} catch {}
-						},
-
-						open: async (readAs) => {
-
-							try {
-
-								this.buffer = Object.create(null);
-
-								[globalThis.editor.file.fileHandle] = await window.showOpenFilePicker({
-									types: [{
-										description: "Text file",
-										accept: {
-											"text/*": [],
-											"application/*": []
-										},
-									}],
-									excludeAcceptAllOption: true,
-									multiple: false
-								});
-								document.title = globalThis.editor.file.fileHandle.name;
-
-								this.buffer.result = new FileReader;
-								this.buffer.result.readAsText(await globalThis.editor.file.fileHandle.getFile(), (readAs || "UTF-8"));
-								this.buffer.result.onload = event => {
-									globalThis.editor.element.value = event.target.result.split("\n");
-									globalThis.editor.action.refresh();
-								};
-
-								globalThis.editor.file.isOpenedFromFS = true;
-
-							} catch {}
-						},
-
-						new() {
-							globalThis.editor.file.fileHandle = null;
-							globalThis.editor.buffer.textData = "";
-							globalThis.editor.element.surface.innerHTML = "<span class=\"lineWrapper active\"><span id=\"caret\" blink=\"on\"></span> </span>";
-							globalThis.editor.action.refresh();
 						},
 
 						cmd(arg) {
@@ -515,28 +520,6 @@
 								globalThis.editor.command.query[globalThis.editor.command.arg[0]]();
 							}
 						},
-
-						setCaretPos(anchorOffset) {
-							window.getSelection().setPosition(globalThis.editor.selectionProperty.anchorNode, anchorOffset);
-						},
-
-						insert(string) {
-							globalThis.editor.selectionProperty.anchorNode.insertData(globalThis.editor.selectionProperty.anchorOffset, string);
-							globalThis.editor.action.setCaretPos(globalThis.editor.selectionProperty.anchorOffset + 1);
-							globalThis.editor.action.refresh();
-						},
-
-						setFocusTo(document) {
-							setTimeout(document.focus(), 0);
-						},
-
-						createInstance(init) {
-							globalThis.editor.buffer.push(init)
-						},
-
-						pushHistory() {
-
-						}
 
 					},
 
@@ -561,7 +544,7 @@
 
 					editor.action.refresh();
 
-					editor.action.setFocusTo(document.getElementById("input"))
+					document.getElementById("input").focus()
 				}
 
 			};
