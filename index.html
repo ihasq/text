@@ -247,6 +247,7 @@
 
 									globalThis.editor.element.editorLine.textContent = (this.buffer.lineDOM += "\n".repeat(Math.ceil(document.documentElement.clientHeight / 16) - 2));
 									globalThis.editor.editorProperty.editorLine = this.buffer.matchedLine;
+
 								};
 							}, 0);
 						}
@@ -314,6 +315,10 @@
 							globalThis.editor.action.refresh();
 
 						},
+
+						undo() {},
+
+						redo() {},
 					},
 
 					command: {
@@ -328,7 +333,7 @@
 								globalThis.editor.buffer.open();
 							},
 
-							"flush"() {
+							"new"() {
 								globalThis.editor.buffer.flush();
 							},
 
