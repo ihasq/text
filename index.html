@@ -48,7 +48,7 @@
 			}
 
 			body {
-				grid-template-rows: auto calc(var(--editor-font-size) + 4px);
+				grid-template-rows: auto calc(var(--editor-font-size) + 8px);
 			}
 
 			div#wrapper {
@@ -136,11 +136,12 @@
 
 			textarea#input {
 				z-index: -1;
-				height: 8px;
-				width: 8px;
-				opacity: 0;
+				height: 16px;
+				width: 1px;
 				resize: none;
 				user-select: none;
+				left: 50px;
+				top: 16px
 			}
 
 			div#footer {
@@ -150,14 +151,26 @@
 				font-size: calc(var(--editor-font-size) * 0.95);
 				outline-offset: -0.5px;
 				width: 100%;
-				grid-template-columns: 100px auto 200px;
+				grid-template-columns: 100px auto 400px;
 				overflow: hidden;
 			}
+
 			div#footer > div {
-				margin: auto 0;
+				width: auto;
+				margin: auto 6px;
 			}
-			div#footer > div > span {
-				margin-left: 10px;
+
+			div#footer > div.left > span {
+				margin-right: 10px;
+			}
+
+			div#footer > div.right {
+				text-align: end;
+			}
+
+			div#footer > div.right > span {
+				text-align: end;
+				margin-left: 20px;
 			}
 		</style>
 
@@ -234,9 +247,9 @@
 		</div>
 
 		<div class="grid" id="footer">
-			<div>abc</div>
+			<div class="left"><span>abc</span></div>
 			<div></div>
-			<div><span>タブ: 4</span><span>HTML</span></div>
+			<div class="right"><span>Line: 240</span><span>Column: 58</span><span>Tab: 4</span><span>HTML</span></div>
 		</div>
 
 
@@ -282,7 +295,7 @@
 
 									for(let i = 1; i <= temp.matchedLine; i++) temp.lineDOM += ( " ".repeat(temp.lineDigits - i.toString().length) + i + "\n" );
 
-									globalThis.editor.element.editorLine.textContent = (temp.lineDOM += "\n".repeat(Math.ceil(document.documentElement.clientHeight / 14) - 2));
+									globalThis.editor.element.editorLine.textContent = (temp.lineDOM += "\n".repeat(Math.ceil(document.getElementById("wrapper").clientHeight / 16) - 3));
 									globalThis.editor.editorProperty.editorLine = temp.matchedLine;
 								}
 
@@ -294,17 +307,23 @@
 
 					buffer: {
 
-						fileName: "",
-						fileHandle: null,
+						file: {
+							name: "",
+							handle: null
+						},
 
 						currentControlQueue: [],
 						textData: "",
+
+						history: {
+
+						},
 
 						open: async (readAs) => {
 
 							let temp = Object.create(null);
 
-							[this.fileHandle] = await window.showOpenFilePicker(
+							[this.file.handle] = await window.showOpenFilePicker(
 
 								{
 									types: [
@@ -323,7 +342,7 @@
 							);
 
 							temp.result = new FileReader;
-							temp.result.readAsText(await this.fileHandle.getFile(), (readAs || "UTF-8"));
+							temp.result.readAsText(await this.file.handle.getFile(), (readAs || "UTF-8"));
 
 							temp.result.onload = event => {
 								document.getElementById("input").value = event.target.result;
@@ -336,7 +355,7 @@
 
 							let temp = Object.create(null);
 
-							if(!this.fileHandle) this.fileHandle = await window.showSaveFilePicker({
+							if(!this.file.handle) this.file.handle = await window.showSaveFilePicker({
 								types: [
 									{
 										description: "Text file",
@@ -347,14 +366,19 @@
 								]
 							});
 
-							temp.writable = await this.fileHandle.createWritable();
+							temp.writable = await this.file.handle.createWritable();
 							await temp.writable.write(this.textData);
 							await temp.writable.close();
 
 						},
 
 						flush() {
-							this.fileHandle = null;
+
+							this.file = {
+								name: "",
+								handle: null
+							}
+
 							document.getElementById("input").value = "";
 
 							globalThis.editor.action.refresh();
@@ -449,7 +473,7 @@
 
 									for(let i = 1; i <= temp.matchedLine; i++) temp.lineDOM += ( " ".repeat(temp.lineDigits - i.toString().length) + i + "\n" );
 
-									globalThis.editor.element.editorLine.textContent = (temp.lineDOM += "\n".repeat(Math.ceil(document.documentElement.clientHeight / 16) - 2));
+									globalThis.editor.element.editorLine.textContent = temp.lineDOM;
 									globalThis.editor.editorProperty.editorLine = temp.matchedLine;
 
 								}
@@ -645,6 +669,8 @@
 					for(const instance in editor.timeoutProcess) editor.timeoutProcess[instance]();
 
 					editor.action.refresh();
+
+
 
 					document.getElementById("input").focus()
 
