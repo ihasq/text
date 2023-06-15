@@ -6,8 +6,6 @@
 
 	editor style settings are modifiable at /html/body/style
 
-	original coding style "vent code"
-
 -->
 
 <!DOCTYPE html>
@@ -146,9 +144,11 @@
 
 			div#footer {
 				background-color: #292929;
-				font-family: var(--editor-font-family);
 				color: var(--editor-color);
-				font-size: calc(var(--editor-font-size) * 0.95);
+
+				font-family: var(--editor-font-family);
+				font-size: var(--editor-font-size);
+
 				outline-offset: -0.5px;
 				width: 100%;
 				grid-template-columns: 100px auto 400px;
@@ -275,6 +275,8 @@
 
 					editor: {
 
+						surface: document.getElementById("editor"),
+
 						lines: 0,
 						focusLine: 1,
 						lastKeyDownedTimestamp: -1,
@@ -283,9 +285,9 @@
 
 						refresh() {
 							setTimeout(() => {
-								globalThis.editor.buffer.textData = globalThis.editor.element.input.value;
+								globalThis.editor.buffer.data = globalThis.editor.element.input.value;
 								let temp = {
-									matchedLine: globalThis.editor.buffer.textData.split("\n").length,
+									matchedLine: globalThis.editor.buffer.data.split("\n").length,
 									lineDOM: "",
 								}
 
@@ -307,16 +309,19 @@
 
 					buffer: {
 
+						input: document.getElementById("input"),
+
+						data: "",
+
 						file: {
 							name: "",
 							handle: null
 						},
 
 						currentControlQueue: [],
-						textData: "",
 
 						history: {
-
+							
 						},
 
 						open: async (readAs) => {
@@ -345,7 +350,7 @@
 							temp.result.readAsText(await this.file.handle.getFile(), (readAs || "UTF-8"));
 
 							temp.result.onload = event => {
-								document.getElementById("input").value = event.target.result;
+								this.input.value = event.target.result;
 								globalThis.editor.action.refresh();
 							}
 
@@ -367,7 +372,7 @@
 							});
 
 							temp.writable = await this.file.handle.createWritable();
-							await temp.writable.write(this.textData);
+							await temp.writable.write(this.data);
 							await temp.writable.close();
 
 						},
@@ -379,7 +384,7 @@
 								handle: null
 							}
 
-							document.getElementById("input").value = "";
+							this.input.value = "";
 
 							globalThis.editor.action.refresh();
 						},
@@ -458,11 +463,11 @@
 
 							setTimeout(() => {
 
-								globalThis.editor.buffer.textData = globalThis.editor.element.input.value;
+								globalThis.editor.buffer.data = globalThis.editor.element.input.value;
 
 								let temp = {
 
-									matchedLine: globalThis.editor.buffer.textData.split("\n").length,
+									matchedLine: globalThis.editor.buffer.data.split("\n").length,
 									lineDOM: "",
 								}
 
