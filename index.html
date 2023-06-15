@@ -207,7 +207,7 @@
 			{
 				window.editor = {
 
-					userState: "insertion",
+					mode: "insertion",
 
 					element: {
 
@@ -233,20 +233,20 @@
 							setTimeout(() => {
 								globalThis.editor.buffer.textData = globalThis.editor.element.input.value;
 
-								this.buffer = {
+								let temp = {
 									matchedLine: globalThis.editor.buffer.textData.split("\n").length,
 									lineDOM: "",
 								};
 
-								if(!(globalThis.editor.editorProperty.editorLine == this.buffer.matchedLine)) {
+								if(!(globalThis.editor.editorProperty.editorLine == temp.matchedLine)) {
 
-									this.buffer.lineDigits = this.buffer.matchedLine.toString().length;
-									if(this.buffer.lineDigits < globalThis.editor.editorProperty.minimalEditorLineDigits) this.buffer.lineDigits = globalThis.editor.editorProperty.minimalEditorLineDigits;
+									temp.lineDigits = temp.matchedLine.toString().length;
+									if(temp.lineDigits < globalThis.editor.editorProperty.minimalEditorLineDigits) temp.lineDigits = globalThis.editor.editorProperty.minimalEditorLineDigits;
 
-									for(let i = 1; i <= this.buffer.matchedLine; i++) this.buffer.lineDOM += ( " ".repeat(this.buffer.lineDigits - i.toString().length) + i + "\n" );
+									for(let i = 1; i <= temp.matchedLine; i++) temp.lineDOM += ( " ".repeat(temp.lineDigits - i.toString().length) + i + "\n" );
 
-									globalThis.editor.element.editorLine.textContent = (this.buffer.lineDOM += "\n".repeat(Math.ceil(document.documentElement.clientHeight / 16) - 2));
-									globalThis.editor.editorProperty.editorLine = this.buffer.matchedLine;
+									globalThis.editor.element.editorLine.textContent = (temp.lineDOM += "\n".repeat(Math.ceil(document.documentElement.clientHeight / 16) - 2));
+									globalThis.editor.editorProperty.editorLine = temp.matchedLine;
 
 								};
 							}, 0);
@@ -285,6 +285,7 @@
 								document.getElementById("input").value = event.target.result;
 								globalThis.editor.action.refresh();
 							};
+
 						},
 
 						save: async () => {
@@ -392,13 +393,13 @@
 
 								event.preventDefault();
 							
-								this.buffer = Object.create(null);
-								this.buffer.isShiftUnpressed = !globalThis.editor.keyProperty.shift;
-								this.buffer.top = (this.buffer.isShiftUnpressed)? "deltaY" : "deltaX";
-								this.buffer.left = (this.buffer.isShiftUnpressed)? "deltaX" : "deltaY";
+								let temp = Object.create(null);
+								temp.isShiftUnpressed = !globalThis.editor.keyProperty.shift;
+								temp.top = (temp.isShiftUnpressed)? "deltaY" : "deltaX";
+								temp.left = (temp.isShiftUnpressed)? "deltaX" : "deltaY";
 
-								globalThis.editor.element.editorGrid.scrollTop += event[this.buffer.top];
-								globalThis.editor.element.surface.scrollLeft += event[this.buffer.left];
+								globalThis.editor.element.editorGrid.scrollTop += event[temp.top];
+								globalThis.editor.element.surface.scrollLeft += event[temp.left];
 
 							}, { passive: false }
 						],
@@ -410,7 +411,7 @@
 
 									case "F1":
 										event.preventDefault();
-										globalThis.editor.userState = "command";
+										globalThis.editor.mode = "command";
 										globalThis.editor.element.commandline.style.visibility = "visible";
 										globalThis.editor.element.commandline.value = "> "
 										globalThis.editor.element.commandline.focus();
@@ -517,20 +518,20 @@
 
 								globalThis.editor.buffer.textData = globalThis.editor.element.input.value;
 
-								this.buffer = {
+								let temp = {
 									matchedLine: globalThis.editor.buffer.textData.split("\n").length,
 									lineDOM: "",
 								};
 
-								if(!(globalThis.editor.editorProperty.editorLine == this.buffer.matchedLine)) {
+								if(!(globalThis.editor.editorProperty.editorLine == temp.matchedLine)) {
 
-									this.buffer.lineDigits = this.buffer.matchedLine.toString().length;
-									if(this.buffer.lineDigits < globalThis.editor.editorProperty.minimalEditorLineDigits) this.buffer.lineDigits = globalThis.editor.editorProperty.minimalEditorLineDigits;
+									temp.lineDigits = temp.matchedLine.toString().length;
+									if(temp.lineDigits < globalThis.editor.editorProperty.minimalEditorLineDigits) temp.lineDigits = globalThis.editor.editorProperty.minimalEditorLineDigits;
 
-									for(let i = 1; i <= this.buffer.matchedLine; i++) this.buffer.lineDOM += ( " ".repeat(this.buffer.lineDigits - i.toString().length) + i + "\n" );
+									for(let i = 1; i <= temp.matchedLine; i++) temp.lineDOM += ( " ".repeat(temp.lineDigits - i.toString().length) + i + "\n" );
 
-									globalThis.editor.element.editorLine.textContent = (this.buffer.lineDOM += "\n".repeat(Math.ceil(document.documentElement.clientHeight / 16) - 2));
-									globalThis.editor.editorProperty.editorLine = this.buffer.matchedLine;
+									globalThis.editor.element.editorLine.textContent = (temp.lineDOM += "\n".repeat(Math.ceil(document.documentElement.clientHeight / 16) - 2));
+									globalThis.editor.editorProperty.editorLine = temp.matchedLine;
 
 								};
 
@@ -549,10 +550,12 @@
 					},
 
 					timeoutProcess: {
+
 						blinkCaret() {
 							document.getElementById("caret").setAttribute("blink", (document.getElementById("caret").getAttribute("blink") == "on")? "off" : "on");
 							setTimeout("editor.timeoutProcess.blinkCaret()", 500);
 						}
+
 					}
 
 				};
