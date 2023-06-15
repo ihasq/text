@@ -262,51 +262,6 @@
 
 					mode: "insertion",
 
-					element: {
-
-						surface: document.getElementById("editor"),
-						commandline: document.getElementById("commandline"),
-						editorGrid: document.getElementById("editorGrid"),
-						editorLine: document.getElementById("editorLine"),
-						input: document.getElementById("input"),
-						editorCaret: document.getElementById("caret")
-
-					},
-
-					editor: {
-
-						surface: document.getElementById("editor"),
-
-						lines: 0,
-						focusLine: 1,
-						lastKeyDownedTimestamp: -1,
-						currentBufferId: -1,
-						minimalEditorLineDigits: 3,
-
-						refresh() {
-							setTimeout(() => {
-								globalThis.editor.buffer.data = globalThis.editor.element.input.value;
-								let temp = {
-									matchedLine: globalThis.editor.buffer.data.split("\n").length,
-									lineDOM: "",
-								}
-
-								if(!(globalThis.editor.editorProperty.editorLine == temp.matchedLine)) {
-									temp.lineDigits = temp.matchedLine.toString().length;
-									if(temp.lineDigits < globalThis.editor.editorProperty.minimalEditorLineDigits) temp.lineDigits = globalThis.editor.editorProperty.minimalEditorLineDigits;
-
-									for(let i = 1; i <= temp.matchedLine; i++) temp.lineDOM += ( " ".repeat(temp.lineDigits - i.toString().length) + i + "\n" );
-
-									globalThis.editor.element.editorLine.textContent = (temp.lineDOM += "\n".repeat(Math.ceil(document.getElementById("wrapper").clientHeight / 16) - 3));
-									globalThis.editor.editorProperty.editorLine = temp.matchedLine;
-								}
-
-								document.getElementById("input").focus();
-
-							}, 0);
-						}
-					},
-
 					buffer: {
 
 						input: document.getElementById("input"),
@@ -321,7 +276,23 @@
 						currentControlQueue: [],
 
 						history: {
-							
+
+							queue: {
+
+							},
+
+							stack: [
+
+								{
+									type: "insertion",
+									from: 0,
+									content: "abc"
+								},
+
+								{
+									type: ""
+								}
+							]
 						},
 
 						open: async (readAs) => {
@@ -392,6 +363,47 @@
 						undo() {},
 
 						redo() {},
+					},
+
+					element: {
+
+						surface: document.getElementById("editor"),
+						commandline: document.getElementById("commandline"),
+						editorGrid: document.getElementById("editorGrid"),
+						editorLine: document.getElementById("editorLine"),
+						input: document.getElementById("input"),
+						editorCaret: document.getElementById("caret")
+
+					},
+
+					editor: {
+
+						surface: document.getElementById("editor"),
+
+						minimalEditorLineDigits: 3,
+
+						refresh() {
+							setTimeout(() => {
+								globalThis.editor.buffer.data = globalThis.editor.element.input.value;
+								let temp = {
+									matchedLine: globalThis.editor.buffer.data.split("\n").length,
+									lineDOM: "",
+								}
+
+								if(!(globalThis.editor.editorProperty.editorLine == temp.matchedLine)) {
+									temp.lineDigits = temp.matchedLine.toString().length;
+									if(temp.lineDigits < globalThis.editor.editorProperty.minimalEditorLineDigits) temp.lineDigits = globalThis.editor.editorProperty.minimalEditorLineDigits;
+
+									for(let i = 1; i <= temp.matchedLine; i++) temp.lineDOM += ( " ".repeat(temp.lineDigits - i.toString().length) + i + "\n" );
+
+									globalThis.editor.element.editorLine.textContent = (temp.lineDOM += "\n".repeat(Math.ceil(document.getElementById("wrapper").clientHeight / 16) - 3));
+									globalThis.editor.editorProperty.editorLine = temp.matchedLine;
+								}
+
+								document.getElementById("input").focus();
+
+							}, 0);
+						}
 					},
 
 					command: {
