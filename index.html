@@ -26,39 +26,41 @@
 				box-sizing: border-box;
 			}
 
-			html {
+			.grid {
+				display: grid;
+			}
 
+
+			html {
 				height: 100vh;
 				width: 100vw;
 			}
 
-			body, div.wrapper, #editorGrid {
-
+			body, div#wrapper, #editorGrid {
 				height: 100%;
 				width: 100%;
 			}
 
-			html, body, div.wrapper, #editorGrid, #editorLine {
-
+			html, body, div#wrapper, #editorGrid, #editorLine {
 				padding: 0px;
 				margin: 0px;
 				user-select: none;
 			}
 
-			div.wrapper {
+			body {
+				grid-template-rows: auto calc(var(--editor-font-size) + 4px);
+			}
 
+			div#wrapper {
 				position: relative;
 			}
 
 			#editorGrid, #commandline, #scrollTopBar, textarea#input {
-
 				position: absolute;
 			}
 
 			#editorGrid {
-
 				z-index: 0;
-				display: grid;
 				grid-template-columns: var(--editor-lineNumber-width) auto;
 				width: 100%;
 				height: 100%;
@@ -66,7 +68,6 @@
 			}
 
 			#editorLine {
-
 				font-family: var(--editor-font-family);
 				font-size: var(--editor-font-size);
 				tab-size: var(--editor-tab-size);
@@ -80,7 +81,6 @@
 			}
 
 			#editor {
-
 				font-family: var(--editor-font-family);
 				font-size: var(--editor-font-size);
 				tab-size: var(--editor-tab-size);
@@ -103,12 +103,10 @@
 			}
 
 			#editor:focus {
-
 				outline: var(--editor-focus-outline);
 			}
 
 			#commandline {
-
 				z-index: 2;
 				top: 10px;
 				left: 30%;
@@ -119,7 +117,6 @@
 			}
 
 			#scrollTopBar {
-
 				z-index: 1;
 				right: 0;
 				width: 4px;
@@ -129,23 +126,15 @@
 				border-radius: 2px;
 			}
 
-			span#caret {
-
-				width: 0px;
-			}
-
 			span#caret[blink="on"] {
-
 				outline: var(--editor-caret-style);
 			}
 
 			span#caret[blink="off"] {
-
 				outline: none;
 			}
 
 			textarea#input {
-
 				z-index: -1;
 				height: 8px;
 				width: 8px;
@@ -153,39 +142,56 @@
 				resize: none;
 				user-select: none;
 			}
+
+			div#footer {
+				background-color: #292929;
+				font-family: var(--editor-font-family);
+				color: var(--editor-color);
+				font-size: calc(var(--editor-font-size) * 0.95);
+				outline-offset: -0.5px;
+				width: 100%;
+				grid-template-columns: 100px auto 200px;
+				overflow: hidden;
+			}
+			div#footer > div {
+				margin: auto 0;
+			}
+			div#footer > div > span {
+				margin-left: 10px;
+			}
 		</style>
 
 	</head>
 
-	<body>
+	<body class="grid">
 
 		<!-- editor style -->
 
-		<style>
+		<style id="settings">
 
 			* {
-				--editor-font-family: "Consolas", 'Courier New', "Courier", "Monaco", "monospace";
-				--editor-font-size: 14px;
-				--editor-tab-size: 4;
-				--editor-line-height: 16px;
+				--editor-font-family:				"Consolas", 'Courier New', "Courier", "Monaco", "monospace";
+				--editor-font-size:					14px;
+				--editor-tab-size:					4;
+				--editor-line-height: 				16px;
 
-				--editor-color: #fff;
-				--editor-background-color: #222;
+				--editor-color:						#fff;
+				--editor-background-color:			#222;
 
-				--editor-line-background-color: #333;
-				--editor-line-color: #dde;
+				--editor-line-background-color:		#333;
+				--editor-line-color:				#dde;
 
-				--editor-caret-style: 1px solid #fff;
+				--editor-caret-style:				1px solid #fff;
 
-				--editor-focus-outline: none;
+				--editor-focus-outline:				none;
 
-				--editor-lineNumber-width: 40px;
+				--editor-lineNumber-width:			40px;
 
-				--editor-scrollBar-activeWidth: 16px;
-				--editor-scrollBar-minimalWidth: 4px;
+				--editor-scrollBar-activeWidth:		16px;
+				--editor-scrollBar-minimalWidth:	4px;
+
+				--file-autosave-delaytime:			1000ms
 			}
-
-			/** #editor::selection { ... } */
 
 			#commandline {
 				font-family: Consolas, 'Courier New', Courier, Monaco, monospace;
@@ -208,9 +214,10 @@
 
 		</style>
 
-		<div class="wrapper" id="activeWrapper">
 
-			<div id="editorGrid">
+		<div id="wrapper">
+
+			<div class="grid" id="editorGrid">
 
 				<pre id="editorLine"></pre>
 
@@ -225,6 +232,13 @@
 			<textarea id="input"></textarea>
 
 		</div>
+
+		<div class="grid" id="footer">
+			<div>abc</div>
+			<div></div>
+			<div><span>タブ: 4</span><span>HTML</span></div>
+		</div>
+
 
 		<script type="text/javascript">
 
@@ -268,9 +282,12 @@
 
 									for(let i = 1; i <= temp.matchedLine; i++) temp.lineDOM += ( " ".repeat(temp.lineDigits - i.toString().length) + i + "\n" );
 
-									globalThis.editor.element.editorLine.textContent = (temp.lineDOM += "\n".repeat(Math.ceil(document.documentElement.clientHeight / 16) - 2));
+									globalThis.editor.element.editorLine.textContent = (temp.lineDOM += "\n".repeat(Math.ceil(document.documentElement.clientHeight / 14) - 2));
 									globalThis.editor.editorProperty.editorLine = temp.matchedLine;
 								}
+
+								document.getElementById("input").focus();
+
 							}, 0);
 						}
 					},
@@ -455,7 +472,7 @@
 					editor.element.commandline.style.visibility = "hidden";
 
 					[
-						[ () => document.getElementById('caret').setAttribute('blink', (document.getElementById('caret').getAttribute('blink') == 'on')? 'off' : 'on'), 600, ],
+						[ () => document.getElementById('caret').setAttribute('blink', (document.getElementById('caret').getAttribute('blink') == 'on')? 'off' : 'on'), 600 ],
 
 					].forEach(set => setInterval(...set));
 
