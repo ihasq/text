@@ -188,7 +188,6 @@
 			/** #editor::selection { ... } */
 
 			#commandline {
-
 				font-family: Consolas, 'Courier New', Courier, Monaco, monospace;
 				font-size: 14px;
 
@@ -244,6 +243,7 @@
 						editorLine: document.getElementById("editorLine"),
 						input: document.getElementById("input"),
 						editorCaret: document.getElementById("caret")
+
 					},
 
 					editor: {
@@ -255,18 +255,14 @@
 						minimalEditorLineDigits: 3,
 
 						refresh() {
-
 							setTimeout(() => {
-
 								globalThis.editor.buffer.textData = globalThis.editor.element.input.value;
-
 								let temp = {
 									matchedLine: globalThis.editor.buffer.textData.split("\n").length,
 									lineDOM: "",
-								};
+								}
 
 								if(!(globalThis.editor.editorProperty.editorLine == temp.matchedLine)) {
-
 									temp.lineDigits = temp.matchedLine.toString().length;
 									if(temp.lineDigits < globalThis.editor.editorProperty.minimalEditorLineDigits) temp.lineDigits = globalThis.editor.editorProperty.minimalEditorLineDigits;
 
@@ -274,9 +270,7 @@
 
 									globalThis.editor.element.editorLine.textContent = (temp.lineDOM += "\n".repeat(Math.ceil(document.documentElement.clientHeight / 16) - 2));
 									globalThis.editor.editorProperty.editorLine = temp.matchedLine;
-
-								};
-
+								}
 							}, 0);
 						}
 					},
@@ -293,55 +287,56 @@
 
 							let temp = Object.create(null);
 
-							[this.fileHandle] = await window.showOpenFilePicker({
-								types: [
-									{
-										description: "Text file",
-										accept: {
-											"text/*": [],
-											"application/*": []
-										},
-									}
-								],
-								excludeAcceptAllOption: true,
-								multiple: false
-							});
+							[this.fileHandle] = await window.showOpenFilePicker(
+
+								{
+									types: [
+										{
+											description: "Text file",
+											accept: {
+												"text/*": [],
+												"application/*": []
+											},
+										}
+									],
+									excludeAcceptAllOption: true,
+									multiple: false
+								}
+
+							);
 
 							temp.result = new FileReader;
 							temp.result.readAsText(await this.fileHandle.getFile(), (readAs || "UTF-8"));
+
 							temp.result.onload = event => {
 								document.getElementById("input").value = event.target.result;
 								globalThis.editor.action.refresh();
-							};
+							}
+
 						},
 
 						save: async () => {
 
 							let temp = Object.create(null);
 
-							if(!this.fileHandle) this.fileHandle = await window.showSaveFilePicker(
-
-								{
-									types: [
-
-										{
-											description: "Text file",
-											accept: {
-
-												"text/*": []
-											}
+							if(!this.fileHandle) this.fileHandle = await window.showSaveFilePicker({
+								types: [
+									{
+										description: "Text file",
+										accept: {
+											"text/*": []
 										}
-									]
-								}
-							);
+									},
+								]
+							});
 
 							temp.writable = await this.fileHandle.createWritable();
 							await temp.writable.write(this.textData);
 							await temp.writable.close();
+
 						},
 
 						flush() {
-
 							this.fileHandle = null;
 							document.getElementById("input").value = "";
 
@@ -358,50 +353,42 @@
 						arg: [],
 
 						query: {
-
 							"save"() {
-
 								globalThis.editor.buffer.save();
 							},
 
 							"open"() {
-
 								globalThis.editor.buffer.open();
 							},
 
 							"new"() {
-
 								globalThis.editor.buffer.flush();
 							},
 
 							"about"() {
-
 								window.open("./about.html", { target: "_blank" });
 							},
 
 							"alert"() {
-
 								alert(globalThis.editor.command.arg.join(" "));
 							},
 
 							"showinput"() {
-
 								console.log(document.getElementById("input"));
 							},
 
 							">"() {
-
 								this.query[this.arg[1]]();
 							}
 						},
 
 						history: [],
-
 						historyIndex: 0,
 
 						exec(args) {
 
 						}
+
 					},
 
 					editorProperty: {
@@ -411,6 +398,7 @@
 						lastKeyDownedTimestamp: -1,
 						currentBufferId: -1,
 						minimalEditorLineDigits: 3
+
 					},
 
 					keyProperty: {
@@ -418,6 +406,7 @@
 						ctrl: false,
 						shift: false,
 						alt: false
+
 					},
 
 					selectionProperty: null,
@@ -431,9 +420,10 @@
 								globalThis.editor.buffer.textData = globalThis.editor.element.input.value;
 
 								let temp = {
+
 									matchedLine: globalThis.editor.buffer.textData.split("\n").length,
 									lineDOM: "",
-								};
+								}
 
 								if(!(globalThis.editor.editorProperty.editorLine == temp.matchedLine)) {
 
@@ -444,7 +434,8 @@
 
 									globalThis.editor.element.editorLine.textContent = (temp.lineDOM += "\n".repeat(Math.ceil(document.documentElement.clientHeight / 16) - 2));
 									globalThis.editor.editorProperty.editorLine = temp.matchedLine;
-								};
+
+								}
 
 							}, 0);
 						},
@@ -457,19 +448,16 @@
 							}
 						},
 					},
-
-					timeoutProcess: {
-
-						blinkCaret() {
-							document.getElementById("caret").setAttribute("blink", (document.getElementById("caret").getAttribute("blink") == "on")? "off" : "on");
-							setTimeout(() => { this.blinkCaret() }, 600);
-						}
-					}
-				};
+				}
 
 				window.onload = () => {
 
 					editor.element.commandline.style.visibility = "hidden";
+
+					[
+						[ () => document.getElementById('caret').setAttribute('blink', (document.getElementById('caret').getAttribute('blink') == 'on')? 'off' : 'on'), 600, ],
+
+					].forEach(set => setInterval(...set));
 
 					[
 						[
@@ -511,7 +499,7 @@
 										editor.element.commandline.focus();
 
 									break;
-								};
+								}
 
 								switch(event.target.id) {
 
@@ -521,7 +509,7 @@
 											case "Tab":
 
 											break;
-										};
+										}
 
 										editor.action.refresh();
 
@@ -530,9 +518,7 @@
 									case "editor":
 
 										editor.keyProperty.ctrl = event.ctrlKey;
-
 										editor.keyProperty.shift = event.shiftKey;
-
 										editor.keyProperty.alt = event.altKey;
 
 										if(editor.keyProperty.ctrl) {
@@ -570,7 +556,7 @@
 
 												break;
 											}
-										};
+										}
 
 									break;
 
@@ -631,7 +617,9 @@
 										editor.element.input.focus();
 
 									break;
+
 								}
+
 							}
 						]
 
@@ -642,8 +630,9 @@
 					editor.action.refresh();
 
 					document.getElementById("input").focus()
+
 				}
-			};
+			}
 
 		</script>
 
