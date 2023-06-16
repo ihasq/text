@@ -34,6 +34,10 @@
 				width: 100vw;
 			}
 
+			html, body {
+				overflow: hidden;
+			}
+
 			body, div#wrapper, #editorGrid {
 				height: 100%;
 				width: 100%;
@@ -53,7 +57,7 @@
 				position: relative;
 			}
 
-			#editorGrid, #commandline, #scrollTopBar, textarea#input {
+			#clipboard, #editorGrid, #scrollTopBar, textarea#input {
 				position: absolute;
 			}
 
@@ -104,16 +108,6 @@
 				outline: var(--editor-focus-outline);
 			}
 
-			#commandline {
-				z-index: 2;
-				top: 10px;
-				left: 30%;
-				right: 30%;
-				width: 40%;
-				
-				border-radius: 3px;
-			}
-
 			#scrollTopBar {
 				z-index: 1;
 				right: 0;
@@ -142,9 +136,14 @@
 				top: 16px
 			}
 
+			textarea#clipboard {
+				z-index: 3;
+				opacity: 0;
+			}
+
 			div#footer {
 				background-color: #292929;
-				color: var(--editor-color);
+				color: var(--editor-footer-color);
 
 				font-family: var(--editor-font-family);
 				font-size: var(--editor-font-size);
@@ -188,6 +187,8 @@
 				--editor-tab-size:					4;
 				--editor-line-height: 				16px;
 
+				--editor-footer-color:				#dde;
+
 				--editor-color:						#fff;
 				--editor-background-color:			#222;
 
@@ -206,29 +207,12 @@
 				--file-autosave-delaytime:			1000ms
 			}
 
-			#commandline {
-				font-family: Consolas, 'Courier New', Courier, Monaco, monospace;
-				font-size: 14px;
-
-				height: 26px;
-
-				border: none;
-
-				padding: 7px;
-
-				background-color: #111;
-
-				color: #fff;
-
-				box-shadow: 0 5px 25px 0 rgba(0, 0, 0, .5);
-
-				outline: 1px solid #ccd;
-			}
-
 		</style>
 
 
 		<div id="wrapper">
+
+			<textarea id="clipboard"></textarea>
 
 			<div class="grid" id="editorGrid">
 
@@ -239,8 +223,6 @@
 			</div>
 
 			<div id="scrollTopBar"></div>
-
-			<input id="commandline" title="type 'help' for more info"/>
 
 			<textarea id="input"></textarea>
 
@@ -258,12 +240,13 @@
 			"use strict";
 
 			{
+
 				window.editor = {
 
 					mode: "insertion",
 
 					buffer: {
-
+						
 						input: document.getElementById("input"),
 
 						data: "",
@@ -336,7 +319,8 @@
 									{
 										description: "Text file",
 										accept: {
-											"text/*": []
+											"text/*": [],
+											"application/*": []
 										}
 									},
 								]
@@ -355,7 +339,7 @@
 								handle: null
 							}
 
-							this.input.value = "";
+							document.getElementById("input").value = "";
 
 							globalThis.editor.action.refresh();
 						},
@@ -368,7 +352,6 @@
 					element: {
 
 						surface: document.getElementById("editor"),
-						commandline: document.getElementById("commandline"),
 						editorGrid: document.getElementById("editorGrid"),
 						editorLine: document.getElementById("editorLine"),
 						input: document.getElementById("input"),
@@ -380,7 +363,7 @@
 
 						surface: document.getElementById("editor"),
 
-						minimalEditorLineDigits: 3,
+						minimalDigits: 3,
 
 						refresh() {
 							setTimeout(() => {
@@ -392,11 +375,11 @@
 
 								if(!(globalThis.editor.editorProperty.editorLine == temp.matchedLine)) {
 									temp.lineDigits = temp.matchedLine.toString().length;
-									if(temp.lineDigits < globalThis.editor.editorProperty.minimalEditorLineDigits) temp.lineDigits = globalThis.editor.editorProperty.minimalEditorLineDigits;
+									if(temp.lineDigits < globalThis.editor.editorProperty.minimalDigits) temp.lineDigits = globalThis.editor.editorProperty.minimalDigits;
 
 									for(let i = 1; i <= temp.matchedLine; i++) temp.lineDOM += ( " ".repeat(temp.lineDigits - i.toString().length) + i + "\n" );
 
-									globalThis.editor.element.editorLine.textContent = (temp.lineDOM += "\n".repeat(Math.ceil(document.getElementById("wrapper").clientHeight / 16) - 3));
+									globalThis.editor.element.editorLine.textContent = (temp.lineDOM += "\n".repeat(Math.ceil(document.getElementById("wrapper").clientHeight / 16)));
 									globalThis.editor.editorProperty.editorLine = temp.matchedLine;
 								}
 
@@ -406,56 +389,13 @@
 						}
 					},
 
-					command: {
-
-						arg: [],
-
-						query: {
-							"save"() {
-								globalThis.editor.buffer.save();
-							},
-
-							"open"() {
-								globalThis.editor.buffer.open();
-							},
-
-							"new"() {
-								globalThis.editor.buffer.flush();
-							},
-
-							"about"() {
-								window.open("./about.html", { target: "_blank" });
-							},
-
-							"alert"() {
-								alert(globalThis.editor.command.arg.join(" "));
-							},
-
-							"showinput"() {
-								console.log(document.getElementById("input"));
-							},
-
-							">"() {
-								this.query[this.arg[1]]();
-							}
-						},
-
-						history: [],
-						historyIndex: 0,
-
-						exec(args) {
-
-						}
-
-					},
-
 					editorProperty: {
 
 						editorLine: 0,
 						focusLine: 1,
 						lastKeyDownedTimestamp: -1,
 						currentBufferId: -1,
-						minimalEditorLineDigits: 3
+						minimalDigits: 3
 
 					},
 
@@ -486,7 +426,7 @@
 								if(!(globalThis.editor.editorProperty.editorLine == temp.matchedLine)) {
 
 									temp.lineDigits = temp.matchedLine.toString().length;
-									if(temp.lineDigits < globalThis.editor.editorProperty.minimalEditorLineDigits) temp.lineDigits = globalThis.editor.editorProperty.minimalEditorLineDigits;
+									if(temp.lineDigits < globalThis.editor.editorProperty.minimalDigits) temp.lineDigits = globalThis.editor.editorProperty.minimalDigits;
 
 									for(let i = 1; i <= temp.matchedLine; i++) temp.lineDOM += ( " ".repeat(temp.lineDigits - i.toString().length) + i + "\n" );
 
@@ -510,7 +450,9 @@
 
 				window.onload = () => {
 
-					editor.element.commandline.style.visibility = "hidden";
+					editor.interface = null;
+
+					delete editor.interface;
 
 					[
 						[ () => document.getElementById('caret').setAttribute('blink', (document.getElementById('caret').getAttribute('blink') == 'on')? 'off' : 'on'), 600 ],
@@ -546,22 +488,11 @@
 						[
 							"keydown", event => {
 
-								switch(event.code) {
-
-									case "F1":
-
-										event.preventDefault();
-										editor.mode = "command";
-										editor.element.commandline.style.visibility = "visible";
-										editor.element.commandline.value = "> "
-										editor.element.commandline.focus();
-
-									break;
-								}
-
 								switch(event.target.id) {
 
 									case "input":
+
+										document.getElementById("input").test()
 
 										switch(event.code) {
 											case "Tab":
@@ -618,27 +549,11 @@
 
 									break;
 
-									case "commandline":
+									case "clipboard":
 
-										switch(event.code) {
+										console.log("changed from clipboard");
 
-											case "Enter":
-
-												event.preventDefault();
-												editor.action.cmd(editor.element.commandline.value);
-												editor.element.commandline.value = "";
-
-											break;
-
-											case "Escape":
-
-												event.preventDefault();
-												document.activeElement.blur();
-												editor.element.commandline.style.visibility = "hidden";
-												editor.element.input.focus();
-
-											break;
-										}
+										document.getElementById("input").focus();
 
 									break;
 								}
@@ -671,7 +586,6 @@
 
 										event.preventDefault();
 										document.activeElement.blur();
-										editor.element.commandline.style.visibility = "hidden";
 										editor.element.input.focus();
 
 									break;
@@ -679,6 +593,25 @@
 								}
 
 							}
+						],
+						
+						[
+							"mousemove", event => {
+								document.getElementById("clipboard").style.transform = "translate(" + (event.clientX - 8) + "px, " + (event.clientY - 8) + "px)";
+							}, { passive: true }
+						],
+
+						[
+							"mousedown", event => {
+								switch(event.target.id) {
+									case "clipboard":
+										if(event.button === 0) {
+											console.log("blocked")
+											event.preventDefault();
+										}
+									break;
+								}
+							}, { passive: false }
 						]
 
 					].forEach(index => window.addEventListener(...index));
@@ -686,8 +619,6 @@
 					for(const instance in editor.timeoutProcess) editor.timeoutProcess[instance]();
 
 					editor.action.refresh();
-
-
 
 					document.getElementById("input").focus()
 
