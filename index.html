@@ -137,8 +137,8 @@
 			textarea#input {
 				z-index: 1;
 				opacity: 0;
-				height: 32px;
-				width: 32px;
+				height: 1px;
+				width: 16px;
 				resize: none;
 				user-select: none;
 			}
@@ -171,13 +171,13 @@
 
 			div#footer > div.right > span {
 				text-align: end;
-				margin-left: 20px;
+				margin-right: 16px;
 			}
 		</style>
 
 	</head>
 
-	<body class="grid">
+	<body class="grid" id="body">
 
 		<!-- editor style -->
 
@@ -205,12 +205,9 @@
 
 				--editor-scrollBar-activeWidth:		16px;
 				--editor-scrollBar-minimalWidth:	4px;
-
-				--file-autosave-delaytime:			1000ms
 			}
 
 		</style>
-
 
 		<div id="wrapper">
 
@@ -218,8 +215,8 @@
 
 				<pre id="editorLine"></pre>
 
-<pre id="editorSurface"><span id="caret" blink="on"></span></span>
-</pre>
+				<pre id="editorSurface">
+<span class="lineWrapper">fn main() {<span id="caret" blink="on"></span> </span></pre>
 
 			</div>
 
@@ -247,17 +244,22 @@
 					mode: "insertion",
 
 					buffer: {
+
+						keyProperty: {
+							shift: false
+						},
 						
 						input: document.getElementById("input"),
 
 						data: "",
 
-						range: -1,
+						selectionStart: -1,
 
-						file: {
-							name: "",
-							handle: null
-						},
+						selectionEnd: -1,
+
+						fileName: "",
+
+						fileHandle: null,
 
 						currentControlQueue: [],
 
@@ -285,7 +287,7 @@
 
 							let temp = Object.create(null);
 
-							[this.file.handle] = await window.showOpenFilePicker(
+							[this.fileHandle] = await window.showOpenFilePicker(
 
 								{
 									types: [
@@ -304,7 +306,7 @@
 							);
 
 							temp.result = new FileReader;
-							temp.result.readAsText(await this.file.handle.getFile(), (readAs || "UTF-8"));
+							temp.result.readAsText(await this.fileHandle.getFile(), "UTF-8");
 
 							temp.result.onload = event => {
 								this.input.value = event.target.result;
@@ -317,7 +319,7 @@
 
 							let temp = Object.create(null);
 
-							if(!this.file.handle) this.file.handle = await window.showSaveFilePicker({
+							if(!this.fileHandle) this.fileHandle = await window.showSaveFilePicker({
 								types: [
 									{
 										description: "Text file",
@@ -329,7 +331,7 @@
 								]
 							});
 
-							temp.writable = await this.file.handle.createWritable();
+							temp.writable = await this.fileHandle.createWritable();
 							await temp.writable.write(this.data);
 							await temp.writable.close();
 
@@ -368,29 +370,26 @@
 
 						line: document.getElementById("editorLine"),
 
+						lineCount: -1,
+
 						minimalDigits: 3,
 
 						refresh() {
-							setTimeout(() => {
-								globalThis.editor.buffer.data = globalThis.editor.element.input.value;
-								let temp = {
-									matchedLine: globalThis.editor.buffer.data.split("\n").length,
-									lineDOM: "",
-								}
 
-								if(!(globalThis.editor.editorProperty.editorLine == temp.matchedLine)) {
-									temp.lineDigits = temp.matchedLine.toString().length;
-									if(temp.lineDigits < globalThis.editor.editorProperty.minimalDigits) temp.lineDigits = this.minimalDigits;
+							let temp = {
+								matchedLine: globalThis.editor.buffer.data.split(/\n/g).length,
+								lineDOM: "",
+							};
 
-									for(let i = 1; i <= temp.matchedLine; i++) temp.lineDOM += ( " ".repeat(temp.lineDigits - i.toString().length) + i + "\n" );
+							if(!(this.lineCount == temp.matchedLine)) {
+								temp.lineDigits = temp.matchedLine.toString().length;
+								if(temp.lineDigits < this.minimalDigits) temp.lineDigits = this.minimalDigits;
 
-									this.line.textContent = (temp.lineDOM += "\n".repeat(Math.ceil(document.getElementById("wrapper").clientHeight / 16)));
-									globalThis.editor.editorProperty.editorLine = temp.matchedLine;
-								}
+								for(let i = 1; i <= temp.matchedLine; i++) temp.lineDOM += ( " ".repeat(temp.lineDigits - i.toString().length) + i + "\n" );
 
-								document.getElementById("input").focus();
-
-							}, 0);
+								this.line.textContent = (temp.lineDOM += "\n".repeat(Math.ceil(document.getElementById("wrapper").clientHeight / 16) - 2));
+								this.lineCount = temp.matchedLine;
+							}
 						}
 					},
 
@@ -404,60 +403,10 @@
 
 					},
 
-					keyProperty: {
-
-						ctrl: false,
-						shift: false,
-						alt: false
-
-					},
-
 					selectionProperty: null,
-
-					action: {
-
-						refresh() {
-
-							setTimeout(() => {
-
-								globalThis.editor.buffer.data = globalThis.editor.element.input.value;
-
-								let temp = {
-
-									matchedLine: globalThis.editor.buffer.data.split("\n").length,
-									lineDOM: "",
-								}
-
-								if(!(globalThis.editor.editorProperty.editorLine == temp.matchedLine)) {
-
-									temp.lineDigits = temp.matchedLine.toString().length;
-									if(temp.lineDigits < globalThis.editor.editorProperty.minimalDigits) temp.lineDigits = globalThis.editor.editorProperty.minimalDigits;
-
-									for(let i = 1; i <= temp.matchedLine; i++) temp.lineDOM += ( " ".repeat(temp.lineDigits - i.toString().length) + i + "\n" );
-
-									globalThis.editor.element.editorLine.textContent = temp.lineDOM;
-									globalThis.editor.editorProperty.editorLine = temp.matchedLine;
-
-								}
-
-							}, 0);
-						},
-
-						cmd(arg) {
-							if(typeof arg === "string") {
-								globalThis.editor.command.arg = arg.split(" ");
-								globalThis.editor.command.history.unshift(globalThis.editor.command.arg);
-								globalThis.editor.command.query[globalThis.editor.command.arg[0]]();
-							}
-						},
-					},
 				}
 
 				window.onload = () => {
-
-					editor.interface = null;
-
-					delete editor.interface;
 
 					[
 						[ () => document.getElementById('caret').setAttribute('blink', (document.getElementById('caret').getAttribute('blink') == 'on')? 'off' : 'on'), 600 ],
@@ -480,7 +429,7 @@
 								event.preventDefault();
 							
 								let temp = Object.create(null);
-								temp.isShiftUnpressed = !editor.keyProperty.shift;
+								temp.isShiftUnpressed = !editor.buffer.keyProperty.shift;
 								temp.top = (temp.isShiftUnpressed)? "deltaY" : "deltaX";
 								temp.left = (temp.isShiftUnpressed)? "deltaX" : "deltaY";
 
@@ -493,47 +442,26 @@
 						[
 							"keydown", event => {
 
+								setTimeout(() => {
+
+									document.getElementById("input").style.transform = "translate(" + document.getElementById("caret").getBoundingClientRect().x + "px," + (document.getElementById("caret").getBoundingClientRect().bottom - 16) + "px)";
+									editor.buffer.data = document.getElementById("input").value;
+									console.log(document.getElementById("input").selectionStart);
+									editor.interface.refresh();
+
+								}, 0);
+
+								editor.buffer.keyProperty.shift = event.shiftKey;
+
 								switch(event.target.id) {
 
-									case "input":
+									case "editorSurface":
 
 										switch(event.code) {
 											case "Tab":
 												event.preventDefault();
+												getSelection().getRangeAt(0).insertNode(document.createTextNode("\t"))
 											break;
-										}
-
-										editor.action.refresh();
-
-									break;
-
-									case "editorSurface":
-
-										editor.keyProperty.ctrl = event.ctrlKey;
-										editor.keyProperty.shift = event.shiftKey;
-										editor.keyProperty.alt = event.altKey;
-
-										if(editor.keyProperty.ctrl) {
-
-											switch(event.code) {
-
-												case "KeyZ":
-
-													event.preventDefault();
-
-												break;
-											}
-
-										} else {
-										
-											switch(event.code) {
-											
-												case "Tab":
-
-													event.preventDefault();
-
-												break;
-											}
 										}
 
 									break;
@@ -543,42 +471,8 @@
 						],
 
 						[
-							"keyup", event => {
-
-								switch(event.target.id) {
-
-									case "editorSurface":
-
-										editor.keyProperty.ctrl = event.ctrlKey;
-										editor.keyProperty.shift = event.shiftKey;
-										editor.keyProperty.alt = event.altKey;
-										
-									break;
-								}
-
-							}, { passive: true }
-						],
-
-						[
 							"mouseup", event => {
-
-								switch(event.target.id) {
-
-									case "editorSurface":
-
-										event.preventDefault();
-
-									break;
-
-								}
-
-							}
-						],
-
-						[
-							"mousedown", event => {
-								document.getElementById("input").style.transform = "translate(" + (event.pageX - 8) + "px," + (event.pageY - 8) + "px)"
-								console.log(document.getElementById("input").selectionStart)
+								document.getElementById("input").focus();
 							}
 						]
 
@@ -586,7 +480,7 @@
 
 					for(const instance in editor.timeoutProcess) editor.timeoutProcess[instance]();
 
-					editor.action.refresh();
+					editor.interface.refresh();
 
 					document.getElementById("input").focus();
 
