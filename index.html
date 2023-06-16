@@ -57,7 +57,7 @@
 				position: relative;
 			}
 
-			#clipboard, #editorGrid, #scrollTopBar, textarea#input {
+			#editorGrid, #scrollTopBar, textarea#input {
 				position: absolute;
 			}
 
@@ -82,7 +82,7 @@
 				padding: 6px;
 			}
 
-			#editor {
+			#editorSurface {
 				font-family: var(--editor-font-family);
 				font-size: var(--editor-font-size);
 				tab-size: var(--editor-tab-size);
@@ -104,12 +104,12 @@
 				user-select: auto;
 			}
 
-			#editor:focus {
+			#editorSurface:focus {
 				outline: var(--editor-focus-outline);
 			}
 
 			#scrollTopBar {
-				z-index: 1;
+				z-index: 2;
 				right: 0;
 				width: 4px;
 				height: 50%;
@@ -126,19 +126,21 @@
 				outline: none;
 			}
 
-			textarea#input {
-				z-index: -1;
-				height: 16px;
-				width: 1px;
-				resize: none;
-				user-select: none;
-				left: 50px;
-				top: 16px
+			span.lineWrapper > span[contenteditable="true"] {
+				opacity: 0;
 			}
 
-			textarea#clipboard {
-				z-index: 3;
+			span.lineWrapper > span[contenteditable="true"]:focus {
+				outline: none;
+			}
+
+			textarea#input {
+				z-index: 1;
 				opacity: 0;
+				height: 32px;
+				width: 32px;
+				resize: none;
+				user-select: none;
 			}
 
 			div#footer {
@@ -150,7 +152,7 @@
 
 				outline-offset: -0.5px;
 				width: 100%;
-				grid-template-columns: 100px auto 400px;
+				grid-template-columns: 200px auto 400px;
 				overflow: hidden;
 			}
 
@@ -212,13 +214,12 @@
 
 		<div id="wrapper">
 
-			<textarea id="clipboard"></textarea>
-
 			<div class="grid" id="editorGrid">
 
 				<pre id="editorLine"></pre>
 
-				<pre id="editor"><span class="lineWrapper active"><span id="caret" blink="on"></span> </span></pre>
+<pre id="editorSurface"><span id="caret" blink="on"></span></span>
+</pre>
 
 			</div>
 
@@ -229,9 +230,9 @@
 		</div>
 
 		<div class="grid" id="footer">
-			<div class="left"><span>abc</span></div>
+			<div class="left"><span>insertion</span></div>
 			<div></div>
-			<div class="right"><span>Line: 240</span><span>Column: 58</span><span>Tab: 4</span><span>HTML</span></div>
+			<div class="right"><span>tab: 4</span><span>HTML</span></div>
 		</div>
 
 
@@ -250,6 +251,8 @@
 						input: document.getElementById("input"),
 
 						data: "",
+
+						range: -1,
 
 						file: {
 							name: "",
@@ -341,7 +344,7 @@
 
 							document.getElementById("input").value = "";
 
-							globalThis.editor.action.refresh();
+							globalThis.editor.interface.refresh();
 						},
 
 						undo() {},
@@ -351,7 +354,7 @@
 
 					element: {
 
-						surface: document.getElementById("editor"),
+						surface: document.getElementById("editorSurface"),
 						editorGrid: document.getElementById("editorGrid"),
 						editorLine: document.getElementById("editorLine"),
 						input: document.getElementById("input"),
@@ -359,9 +362,11 @@
 
 					},
 
-					editor: {
+					interface: {
 
-						surface: document.getElementById("editor"),
+						surface: document.getElementById("editorSurface"),
+
+						line: document.getElementById("editorLine"),
 
 						minimalDigits: 3,
 
@@ -375,11 +380,11 @@
 
 								if(!(globalThis.editor.editorProperty.editorLine == temp.matchedLine)) {
 									temp.lineDigits = temp.matchedLine.toString().length;
-									if(temp.lineDigits < globalThis.editor.editorProperty.minimalDigits) temp.lineDigits = globalThis.editor.editorProperty.minimalDigits;
+									if(temp.lineDigits < globalThis.editor.editorProperty.minimalDigits) temp.lineDigits = this.minimalDigits;
 
 									for(let i = 1; i <= temp.matchedLine; i++) temp.lineDOM += ( " ".repeat(temp.lineDigits - i.toString().length) + i + "\n" );
 
-									globalThis.editor.element.editorLine.textContent = (temp.lineDOM += "\n".repeat(Math.ceil(document.getElementById("wrapper").clientHeight / 16)));
+									this.line.textContent = (temp.lineDOM += "\n".repeat(Math.ceil(document.getElementById("wrapper").clientHeight / 16)));
 									globalThis.editor.editorProperty.editorLine = temp.matchedLine;
 								}
 
@@ -475,12 +480,12 @@
 								event.preventDefault();
 							
 								let temp = Object.create(null);
-								temp.isShiftUnpressed = !globalThis.editor.keyProperty.shift;
+								temp.isShiftUnpressed = !editor.keyProperty.shift;
 								temp.top = (temp.isShiftUnpressed)? "deltaY" : "deltaX";
 								temp.left = (temp.isShiftUnpressed)? "deltaX" : "deltaY";
 
-								editor.element.editorGrid.scrollTop += event[temp.top];
-								editor.element.surface.scrollLeft += event[temp.left];
+								document.getElementById("editorGrid").scrollTop += event[temp.top];
+								document.getElementById("editorSurface").scrollLeft += event[temp.left];
 
 							}, { passive: false }
 						],
@@ -492,11 +497,9 @@
 
 									case "input":
 
-										document.getElementById("input").test()
-
 										switch(event.code) {
 											case "Tab":
-
+												event.preventDefault();
 											break;
 										}
 
@@ -504,7 +507,7 @@
 
 									break;
 
-									case "editor":
+									case "editorSurface":
 
 										editor.keyProperty.ctrl = event.ctrlKey;
 										editor.keyProperty.shift = event.shiftKey;
@@ -530,30 +533,8 @@
 													event.preventDefault();
 
 												break;
-
-												case "Backspace":
-
-													if(editor.element.surface.textContent.length == 1) {
-
-														event.preventDefault();
-
-													} else {
-
-														editor.action.refresh();
-
-													}
-
-												break;
 											}
 										}
-
-									break;
-
-									case "clipboard":
-
-										console.log("changed from clipboard");
-
-										document.getElementById("input").focus();
 
 									break;
 								}
@@ -566,7 +547,8 @@
 
 								switch(event.target.id) {
 
-									case "editor":
+									case "editorSurface":
+
 										editor.keyProperty.ctrl = event.ctrlKey;
 										editor.keyProperty.shift = event.shiftKey;
 										editor.keyProperty.alt = event.altKey;
@@ -582,11 +564,9 @@
 
 								switch(event.target.id) {
 
-									case "editor":
+									case "editorSurface":
 
 										event.preventDefault();
-										document.activeElement.blur();
-										editor.element.input.focus();
 
 									break;
 
@@ -594,24 +574,12 @@
 
 							}
 						],
-						
-						[
-							"mousemove", event => {
-								document.getElementById("clipboard").style.transform = "translate(" + (event.clientX - 8) + "px, " + (event.clientY - 8) + "px)";
-							}, { passive: true }
-						],
 
 						[
 							"mousedown", event => {
-								switch(event.target.id) {
-									case "clipboard":
-										if(event.button === 0) {
-											console.log("blocked")
-											event.preventDefault();
-										}
-									break;
-								}
-							}, { passive: false }
+								document.getElementById("input").style.transform = "translate(" + (event.pageX - 8) + "px," + (event.pageY - 8) + "px)"
+								console.log(document.getElementById("input").selectionStart)
+							}
 						]
 
 					].forEach(index => window.addEventListener(...index));
@@ -620,7 +588,7 @@
 
 					editor.action.refresh();
 
-					document.getElementById("input").focus()
+					document.getElementById("input").focus();
 
 				}
 			}
