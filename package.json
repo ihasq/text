@@ -1,0 +1,27 @@
+{
+  "name": "Polotext",
+  "version": "0.0.1",
+  "description": "",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ihasq/text.git"
+  },
+  "keywords": [
+    "hydrotext",
+    "texteditor",
+    "editor"
+  ],
+  "author": "ihasq",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ihasq/text/issues"
+  },
+  "homepage": "https://github.com/ihasq/text#readme",
+  "dependencies": {
+    "fs-extra": "^11.1.1"
+  }
+}
