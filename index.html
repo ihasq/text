@@ -213,7 +213,7 @@
 
 				<pre id="editorLine"></pre>
 
-				<pre id="editorSurface"><span id="caret" blink="on"></span></pre>
+				<pre id="editorSurface"><span class="line"><span id="caret" blink="on"></span></span></pre>
 
 			</div>
 
@@ -389,19 +389,26 @@
 						refresh() {
 
 							let temp = {
-								matchedLine: globalThis.editor.buffer.data.split(/\n/g).length,
+								line: globalThis.editor.buffer.data.split(/\n/g),
 								lineDOM: "",
+								currentSurfaceLine: document.getElementById("editorSurface").children
 							};
 
-							if(this.lineCount - temp.matchedLine) {
-								temp.lineDigits = temp.matchedLine.toString().length;
+							if(this.lineCount - temp.line.length) {
+								temp.lineDigits = temp.line.length.toString().length;
 								if(temp.lineDigits < this.minimalDigits) temp.lineDigits = this.minimalDigits;
 
-								for(let i = 1; i <= temp.matchedLine; i++) temp.lineDOM += ( " ".repeat(temp.lineDigits - i.toString().length) + i + "\n" );
+								for(let i = 1; i <= temp.line.length; i++) temp.lineDOM += ( " ".repeat(temp.lineDigits - i.toString().length) + i + "\n" );
 
 								this.line.textContent = (temp.lineDOM += "\n".repeat(Math.ceil(document.getElementById("wrapper").clientHeight / 16) - 2));
-								this.lineCount = temp.matchedLine;
+								this.lineCount = temp.line.length;
 							};
+
+							for(let i = 0; i < temp.line.length; i++) {
+								if(temp.currentSurfaceLine[i].textContent !== temp.line[i]) {
+									temp.currentSurfaceLine[i].textContent = temp.line[i]
+								}
+							}
 						}
 					},
 
