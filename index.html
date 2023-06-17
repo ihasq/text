@@ -57,7 +57,7 @@
 				position: relative;
 			}
 
-			#editorGrid, #scrollTopBar, textarea#input, textarea#clipboard {
+			#editorGrid, #scrollTopBar, textarea#input {
 				position: absolute;
 			}
 
@@ -118,19 +118,15 @@
 				border-radius: 2px;
 			}
 
+			#editorSurface::after {
+				content: " ";
+			}
+
 			span#caret[blink="on"] {
 				outline: var(--editor-caret-style);
 			}
 
 			span#caret[blink="off"] {
-				outline: none;
-			}
-
-			span.lineWrapper > span[contenteditable="true"] {
-				opacity: 0;
-			}
-
-			span.lineWrapper > span[contenteditable="true"]:focus {
 				outline: none;
 			}
 
@@ -175,11 +171,6 @@
 				text-align: end;
 				margin-right: 8px;
 			}
-
-			textarea#clipboard {
-				z-index: 3;
-				opacity: 0;
-			}
 		</style>
 
 	</head>
@@ -222,16 +213,13 @@
 
 				<pre id="editorLine"></pre>
 
-				<pre id="editorSurface">
-<span class="lineWrapper">fn main() {<span id="caret" blink="on"></span> </span></pre>
+				<pre id="editorSurface"><span id="caret" blink="on"></span></pre>
 
 			</div>
 
 			<div id="scrollTopBar"></div>
 
 			<textarea id="input" wrap="off"></textarea>
-
-			<textarea id="clipboard" wrap="off"></textarea>
 
 		</div>
 
@@ -259,7 +247,7 @@
 						
 						input: document.getElementById("input"),
 
-						data: "SLAM\nDUNK",
+						data: "SLAM\nDUNK\nMOVIE",
 
 						selection: [0, 6],
 
@@ -405,7 +393,7 @@
 								lineDOM: "",
 							};
 
-							if(!(this.lineCount == temp.matchedLine)) {
+							if(this.lineCount - temp.matchedLine) {
 								temp.lineDigits = temp.matchedLine.toString().length;
 								if(temp.lineDigits < this.minimalDigits) temp.lineDigits = this.minimalDigits;
 
@@ -413,7 +401,7 @@
 
 								this.line.textContent = (temp.lineDOM += "\n".repeat(Math.ceil(document.getElementById("wrapper").clientHeight / 16) - 2));
 								this.lineCount = temp.matchedLine;
-							}
+							};
 						}
 					},
 
@@ -421,7 +409,6 @@
 
 						editorLine: 0,
 						focusLine: 1,
-						lastKeyDownedTimestamp: -1,
 						currentBufferId: -1,
 						minimalDigits: 3
 
@@ -475,15 +462,10 @@
 
 						[
 							"keydown", event => {
-
 								let temp = Object.create(null);
-
 								temp.input = document.getElementById("input");
-
 								if(event.ctrlKey) {
-
 									switch(event.key) {
-
 										case "v":
 											editor.buffer.pushHistory();
 											setTimeout(() => {
@@ -510,22 +492,17 @@
 											}, 0);
 										break;
 									}
-
 								} else {
-
 									temp.caretClientRect = document.getElementById("caret").getBoundingClientRect();
 									document.getElementById("input").style.transform = "translate(" + (temp.caretClientRect.x + 2) + "px," + (temp.caretClientRect.y + 2) + "px)";
 									editor.buffer.keyProperty.shift = event.shiftKey;
-
 									switch(event.key) {
-
 										case "Enter":
 											editor.buffer.pushHistory();
+											editor.interface.refresh();
 										break;
 									}
-
-								}
-
+								};
 							}, { passive: false }
 						],
 
