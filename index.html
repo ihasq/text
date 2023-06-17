@@ -57,7 +57,7 @@
 				position: relative;
 			}
 
-			#editorGrid, #scrollTopBar, textarea#input {
+			#editorGrid, #scrollTopBar, textarea#input, textarea#clipboard {
 				position: absolute;
 			}
 
@@ -137,10 +137,12 @@
 			textarea#input {
 				z-index: 1;
 				opacity: 0;
-				height: 1px;
-				width: 16px;
+				height: 4px;
+				width: 1px;
 				resize: none;
 				user-select: none;
+				border: none;
+				padding: 0px;
 			}
 
 			div#footer {
@@ -162,7 +164,7 @@
 			}
 
 			div#footer > div.left > span {
-				margin-right: 10px;
+				margin-left: 8px;
 			}
 
 			div#footer > div.right {
@@ -171,7 +173,12 @@
 
 			div#footer > div.right > span {
 				text-align: end;
-				margin-right: 16px;
+				margin-right: 8px;
+			}
+
+			textarea#clipboard {
+				z-index: 3;
+				opacity: 0;
 			}
 		</style>
 
@@ -222,7 +229,9 @@
 
 			<div id="scrollTopBar"></div>
 
-			<textarea id="input"></textarea>
+			<textarea id="input" wrap="off"></textarea>
+
+			<textarea id="clipboard" wrap="off"></textarea>
 
 		</div>
 
@@ -250,11 +259,9 @@
 						
 						input: document.getElementById("input"),
 
-						data: "",
+						data: "SLAM\nDUNK",
 
-						selectionStart: -1,
-
-						selectionEnd: -1,
+						selection: [0, 6],
 
 						fileName: "",
 
@@ -279,7 +286,12 @@
 								{
 									type: ""
 								}
-							]
+							],
+
+							pushQueue() {
+								this.stack.push(this.queue);
+								this.queue = Object.create(null);
+							}
 						},
 
 						open: async (readAs) => {
@@ -351,6 +363,19 @@
 						undo() {},
 
 						redo() {},
+
+						pushHistory(init) {
+							this.history.pushQueue();
+							this.input.value = "";
+						},
+
+						getSelectedData() {
+							return {
+								value: this.data.substring(...this.selection),
+								from: this.selection[0],
+								to: this.selection[1]
+							}
+						}
 					},
 
 					element: {
@@ -435,39 +460,87 @@
 								document.getElementById("editorGrid").scrollTop += event[temp.top];
 								document.getElementById("editorSurface").scrollLeft += event[temp.left];
 
+								document.getElementById("scrollTopBar").style.transform = "translateY(" + (
+									(document.getElementById("editorGrid").scrollTop / document.getElementById("editorGrid").scrollHeight)
+								) +"px)"
+
 							}, { passive: false }
 						],
+
+						// key event
 
 						[
 							"keydown", event => {
 
-								setTimeout(() => {
+								let temp = Object.create(null);
 
-									document.getElementById("input").style.transform = "translate(" + document.getElementById("caret").getBoundingClientRect().x + "px," + (document.getElementById("caret").getBoundingClientRect().bottom - 16) + "px)";
-									editor.buffer.data = document.getElementById("input").value;
-									console.log(document.getElementById("input").selectionStart);
-									editor.interface.refresh();
+								temp.input = document.getElementById("input");
 
-								}, 0);
+								if(event.ctrlKey) {
 
-								editor.buffer.keyProperty.shift = event.shiftKey;
+									switch(event.key) {
 
-								switch(event.target.id) {
+										case "v":
+											editor.buffer.pushHistory();
+											setTimeout(() => {
+												console.log(document.getElementById("input").value);
+												if(!(temp.input.value.length === 0)) {
+													editor.buffer.pushHistory();
+												}
+											}, 0);
+										break;
 
-									case "editorSurface":
+										case "x":
+										case "c":
+											editor.buffer.pushHistory();
+											temp.input.value = editor.buffer.getSelectedData().value;
+											temp.input.select();
+											setTimeout(() => {
+												if(event.key === "x") {
+													console.log("x")
+													editor.buffer.pushHistory({
+														action: "remove",
+														value: temp.input.value
+													});
+												};
+											}, 0);
+										break;
+									}
 
-										switch(event.code) {
-											case "Tab":
-												event.preventDefault();
-												getSelection().getRangeAt(0).insertNode(document.createTextNode("\t"))
-											break;
-										}
+								} else {
 
-									break;
+									temp.caretClientRect = document.getElementById("caret").getBoundingClientRect();
+									document.getElementById("input").style.transform = "translate(" + (temp.caretClientRect.x + 2) + "px," + (temp.caretClientRect.y + 2) + "px)";
+									editor.buffer.keyProperty.shift = event.shiftKey;
+
+									switch(event.target.id) {
+
+										case "editorSurface":
+
+											switch(event.code) {
+												case "Tab":
+													event.preventDefault();
+													getSelection().getRangeAt(0).insertNode(document.createTextNode("\t"))
+												break;
+											}
+
+										break;
+									}
+
+									setTimeout(() => {
+
+										editor.buffer.data = document.getElementById("input").value;
+										console.log(document.getElementById("input").selectionStart);
+										editor.interface.refresh();
+
+									}, 0);
+
 								}
 
 							}, { passive: false }
 						],
+
+						// mouse event
 
 						[
 							"mouseup", event => {
