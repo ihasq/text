@@ -428,6 +428,10 @@
 					},
 
 					selectionProperty: null,
+
+					previousProperty: {
+						inputValueLine: 0,
+					}
 				}
 
 				window.onload = () => {
@@ -513,27 +517,12 @@
 									document.getElementById("input").style.transform = "translate(" + (temp.caretClientRect.x + 2) + "px," + (temp.caretClientRect.y + 2) + "px)";
 									editor.buffer.keyProperty.shift = event.shiftKey;
 
-									switch(event.target.id) {
+									switch(event.key) {
 
-										case "editorSurface":
-
-											switch(event.code) {
-												case "Tab":
-													event.preventDefault();
-													getSelection().getRangeAt(0).insertNode(document.createTextNode("\t"))
-												break;
-											}
-
+										case "Enter":
+											editor.buffer.pushHistory();
 										break;
 									}
-
-									setTimeout(() => {
-
-										editor.buffer.data = document.getElementById("input").value;
-										console.log(document.getElementById("input").selectionStart);
-										editor.interface.refresh();
-
-									}, 0);
 
 								}
 
