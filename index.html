@@ -57,7 +57,7 @@
 				position: relative;
 			}
 
-			#editorGrid, #scrollTopBar, textarea#input, #contextmenu {
+			div#wrapper > * {
 				position: absolute;
 			}
 
@@ -177,10 +177,10 @@
 			}
 
 			#contextmenu {
-				width: 180px;
+				width: 220px;
 				height: max-content;
-				background-color: #292929;
-				outline: 1px solid #889;
+				background-color: #222;
+				outline: 1px solid #555;
 				border-radius: 4px;
 			}
 
@@ -193,27 +193,43 @@
 			}
 
 			#contextmenu > div.group {
-				padding: 2px
+				border-bottom: 1px solid #555;
 			}
 
-			#contextmenu > div.group > div {
+			#contextmenu > div.group:last-child {
+				border-bottom: none
+			}
+
+			#contextmenu > div.group > div.index {
+				grid-template-columns: auto 60px;
 				font-size: 13px;
-				color: #fff;
-				margin: 0px;
-				padding: 6px 20px;
-				border-radius: 2px;
+				font-family: var(--editor-font-family);
+				color: #bbb;
+				padding: 4px 18px;
 				background-color: transparent;
 			}
 
-			#contextmenu > div.group > div:hover {
-				background-color: #363636;
+			#contextmenu > div.group > div.index.disabled {
+				color: #666;
 			}
 
-			#contextmenu > div.divider {
-				padding: 0px;
-				margin: 0px;
-				border-top: 1px solid #889;
+			#contextmenu > div.group > div.index > span:last-child {
+				text-align: end;
 			}
+
+			#contextmenu > div.group > div.index:hover:not(.disabled) {
+				background-color: #363636;
+				color: #fff;
+			}
+
+			#contextmenu > div.group > div.index:first-child {
+				padding-top: 7px;
+			}
+
+			#contextmenu > div.group > div.index:last-child {
+				padding-bottom: 6px;
+			}
+
 		</style>
 
 	</head>
@@ -253,6 +269,8 @@
 
 		<div id="wrapper">
 
+			<textarea id="input" wrap="off"></textarea>
+
 			<div class="grid" id="editorGrid">
 
 				<pre id="editorLine"></pre>
@@ -263,19 +281,7 @@
 
 			<div id="scrollTopBar"></div>
 
-			<textarea id="input" wrap="off"></textarea>
-
-			<div class="contextmenu" id="contextmenu" state="hidden">
-				<div class="contextmenu group">
-					<div class="contextmenu grid">Copy</div>
-					<div class="contextmenu grid">Cut</div>
-					<div class="contextmenu grid">Paste</div>
-				</div>
-				<div class="contextmenu divider"></div>
-				<div class="contextmenu group">
-					<div class="contextmenu grid">Save as</div>
-				</div>
-			</div>
+			<div class="contextmenu" id="contextmenu" state="hidden"></div>
 
 		</div>
 
@@ -296,6 +302,8 @@
 					mode: "insertion",
 
 					buffer: {
+
+						isExecCommandEnabled: true,
 
 						keyProperty: {
 							shift: false
@@ -442,11 +450,54 @@
 
 						contextmenu:{
 							showed: false,
-							operation: {
-								"Copy": {
-									opRegistryId: "copy"
-								}
-							}
+							operation: [
+								[
+									["Undo", {
+										command: "Ctrl+Z",
+										hint: "Undo operation",
+										action: "editor.buffer.undo()"
+									}],
+									["Redo", {
+										command: "Ctrl+Y",
+										hint: "Redo operation"
+									}],
+								],
+								[
+									["Copy", {
+										permission: "clipboard-write",
+										command: "Ctrl+C",
+										hint: "Copy selected string to clipboard"
+									}],
+									["Cut", {
+										permission: "clipboard-write",
+										command: "Ctrl+V",
+										hint: "Cut and paste selected string to clipboard"
+									}],
+									["Paste", {
+										permission: "clipboard-read",
+										command: "Ctrl+P",
+										hint: "Paste string from clipboard"
+									}],
+								],
+								[
+									["Save", {
+										command: "Ctrl+S",
+										hint: "Copy selected string to clipboard"
+									}],
+									["New", {
+										command: "Ctrl+N",
+										hint: "Cut and paste selected string to clipboard"
+									}],
+									["Open", {
+										command: "Ctrl+O",
+										hint: "Paste string from clipboard"
+									}],
+								],
+								[
+									["Settings", {}],
+									["About Text app", {}]
+								],
+							]
 						},
 
 						lineCount: -1,
@@ -492,6 +543,15 @@
 
 					previousProperty: {
 						inputValueLine: 0,
+						page: {
+							x: 0,
+							y: 0
+						}
+					},
+
+					permission: {
+						"clipboard-write": false,
+						"clipboard-read": false
 					}
 				}
 
@@ -581,7 +641,7 @@
 								// contextmenu appearance control process
 								if(!event.target.classList.contains("contextmenu")) {
 									let temp = {
-										ctx: document.getElementById("contextmenu")
+										ctx: document.getElementById("contextmenu"),
 									};
 									switch(true) {
 										case editor.interface.contextmenu.showed:
@@ -590,9 +650,45 @@
 											editor.interface.contextmenu.showed = false;
 											break;
 										case (event.button === 2):
+											if(event.pageX !== editor.previousProperty.page.x || event.pageY !== editor.previousProperty.page.y) {
+												temp.clientRect = temp.ctx.getBoundingClientRect();
+												temp.ctx.style.transform = "translate(" + (
+													event.pageX + 2 - (
+														((event.pageX + temp.clientRect.width) > window.innerWidth)? (temp.clientRect.width + 4) : -4
+													)
+												) + "px," + (
+													event.pageY + 2 - (
+														((event.pageY + temp.clientRect.height) > window.innerHeight)? (temp.clientRect.height + 4) : -4
+													)
+												) + "px)";
+												editor.previousProperty.page = {
+													x: event.pageX,
+													y: event.pageY
+												};
+											};
+											temp.ctx.innerHTML = (() => {
+												let html = "";
+												for(const group of editor.interface.contextmenu.operation) {
+													html += "<div class=\"contextmenu group\">";
+													for(const index of group) {
+														html += "<div class=\"grid contextmenu index" + (
+															(!!(index[1].permission) && (!editor.permission[index[1].permission]))? " disabled" : ""
+														) + "\"" + (
+															(!!(index[1].permission) && (!editor.permission[index[1].permission]))? "title=\"Permission required: click to verify\"" : (!!index[1].hint)? ("title=\"" + index[1].hint + "\"") : ""
+														) + (
+															(!!index[1].action)? ("onclick=\"" + index[1].action + "\"") : ""
+														) + (
+															(!!(index[1].permission) && (!editor.permission[index[1].permission]))? "style=\"cursor: not-allowed\"": ""
+														) + "><span class=\"contextmenu\">" + index[0] + "</span><span class=\"contextmenu\">" + (
+															(!!index[1].command)? index[1].command : ""
+														) + "</span></div>";
+													};
+													html += "</div>";
+												};
+												return html
+											})();
 											editor.mode = "contextmenu";
 											temp.ctx.setAttribute("state", "active");
-											temp.ctx.style.transform = "translate(" + (event.pageX + 2) + "px," + (event.pageY + 2) + "px)";
 											editor.interface.contextmenu.showed = true;
 									};
 								}
