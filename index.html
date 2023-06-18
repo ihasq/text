@@ -177,12 +177,19 @@
 			}
 
 			#contextmenu {
-				z-index: -1;
 				width: 60px;
 				height: 180px;
 				background-color: #2a2a2a;
 				outline: 1px solid #ccd;
 				border-radius: 4px;
+			}
+
+			#contextmenu[state="active"] {
+				z-index: 3;
+			}
+
+			#contextmenu[state="hidden"] {
+				z-index: -1;
 			}
 		</style>
 
@@ -235,7 +242,7 @@
 
 			<textarea id="input" wrap="off"></textarea>
 
-			<div class="contextmenu" id="contextmenu"></div>
+			<div class="contextmenu" id="contextmenu" state="hidden"></div>
 
 		</div>
 
@@ -402,6 +409,11 @@
 
 						contextmenu:{
 							showed: false,
+							operation: {
+								"Copy": {
+									opRegistryId: "copy"
+								}
+							}
 						},
 
 						lineCount: -1,
@@ -499,7 +511,7 @@
 													editor.buffer.pushHistory();
 												}
 											}, 0);
-										break;
+											break;
 
 										case "x":
 										case "c":
@@ -515,7 +527,6 @@
 													});
 												};
 											}, 0);
-										break;
 									}
 								} else {
 									temp.caretClientRect = document.getElementById("caret").getBoundingClientRect();
@@ -525,7 +536,6 @@
 										case "Enter":
 											editor.buffer.pushHistory();
 											editor.interface.refresh(editor.buffer);
-										break;
 									}
 								};
 							}, { passive: false }
@@ -543,17 +553,19 @@
 							"mousedown", event => {
 								// contextmenu appearance control process
 								if(!event.target.classList.contains("contextmenu")) {
-									if(editor.interface.contextmenu.showed) {
-										document.getElementById("contextmenu").style.zIndex = -1;
-										editor.interface.contextmenu.showed = false;
-									} else {
-										switch(event.button) {
-											case 2:
-												document.getElementById("contextmenu").style.zIndex = 3;
-												document.getElementById("contextmenu").style.transform = "translate(" + (event.pageX + 2) + "px," + (event.pageY + 2) + "px)";
-												editor.interface.contextmenu.showed = true;
+									let temp = {
+										ctx: document.getElementById("contextmenu")
+									};
+									switch(true) {
+										case editor.interface.contextmenu.showed:
+											temp.ctx.setAttribute("state", "hidden");
+											editor.interface.contextmenu.showed = false;
 											break;
-										}
+										case (event.button === 2):
+											editor.mode = "contextmenu";
+											temp.ctx.setAttribute("state", "active");
+											temp.ctx.style.transform = "translate(" + (event.pageX + 2) + "px," + (event.pageY + 2) + "px)";
+											editor.interface.contextmenu.showed = true;
 									};
 								}
 							}
