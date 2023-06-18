@@ -97,7 +97,7 @@
 				min-height: 100%;
 
 				margin: 0px;
-				padding: 6px;
+				padding: 6px 10px;
 
 				cursor: text;
 
@@ -177,10 +177,10 @@
 			}
 
 			#contextmenu {
-				width: 60px;
-				height: 180px;
-				background-color: #2a2a2a;
-				outline: 1px solid #ccd;
+				width: 180px;
+				height: max-content;
+				background-color: #292929;
+				outline: 1px solid #889;
 				border-radius: 4px;
 			}
 
@@ -190,6 +190,29 @@
 
 			#contextmenu[state="hidden"] {
 				z-index: -1;
+			}
+
+			#contextmenu > div.group {
+				padding: 2px
+			}
+
+			#contextmenu > div.group > div {
+				font-size: 13px;
+				color: #fff;
+				margin: 0px;
+				padding: 6px 20px;
+				border-radius: 2px;
+				background-color: transparent;
+			}
+
+			#contextmenu > div.group > div:hover {
+				background-color: #363636;
+			}
+
+			#contextmenu > div.divider {
+				padding: 0px;
+				margin: 0px;
+				border-top: 1px solid #889;
 			}
 		</style>
 
@@ -242,7 +265,17 @@
 
 			<textarea id="input" wrap="off"></textarea>
 
-			<div class="contextmenu" id="contextmenu" state="hidden"></div>
+			<div class="contextmenu" id="contextmenu" state="hidden">
+				<div class="contextmenu group">
+					<div class="contextmenu grid">Copy</div>
+					<div class="contextmenu grid">Cut</div>
+					<div class="contextmenu grid">Paste</div>
+				</div>
+				<div class="contextmenu divider"></div>
+				<div class="contextmenu group">
+					<div class="contextmenu grid">Save as</div>
+				</div>
+			</div>
 
 		</div>
 
@@ -360,7 +393,7 @@
 								handle: null
 							}
 
-							document.getElementById("input").value = "";
+							this.input.value = "";
 
 							globalThis.editor.interface.refresh();
 						},
@@ -499,8 +532,9 @@
 
 						[
 							"keydown", event => {
-								let temp = Object.create(null);
-								temp.input = document.getElementById("input");
+								let temp = {
+									input: document.getElementById("input")
+								};
 								if(event.ctrlKey) {
 									switch(event.key) {
 										case "v":
@@ -512,7 +546,6 @@
 												}
 											}, 0);
 											break;
-
 										case "x":
 										case "c":
 											editor.buffer.pushHistory();
@@ -536,18 +569,12 @@
 										case "Enter":
 											editor.buffer.pushHistory();
 											editor.interface.refresh(editor.buffer);
-									}
+									};
 								};
 							}, { passive: false }
 						],
 
 						// mouse event
-
-						[
-							"mouseup", event => {
-								document.getElementById("input").focus();
-							}
-						],
 
 						[
 							"mousedown", event => {
@@ -559,6 +586,7 @@
 									switch(true) {
 										case editor.interface.contextmenu.showed:
 											temp.ctx.setAttribute("state", "hidden");
+											editor.mode = "insertion";
 											editor.interface.contextmenu.showed = false;
 											break;
 										case (event.button === 2):
@@ -569,6 +597,12 @@
 									};
 								}
 							}
+						],
+
+						[
+							"mouseup", event => {
+								document.getElementById("input").focus();
+							}, { passive: true }
 						],
 
 						[
