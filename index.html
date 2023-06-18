@@ -57,7 +57,7 @@
 				position: relative;
 			}
 
-			#editorGrid, #scrollTopBar, textarea#input {
+			#editorGrid, #scrollTopBar, textarea#input, #contextmenu {
 				position: absolute;
 			}
 
@@ -75,7 +75,7 @@
 				tab-size: var(--editor-tab-size);
 				line-height: var(--editor-line-height);
 
-				color: var(--editor-line-color);
+				color: var(--editor-line-color-inactive);
 				background-color: var(--editor-line-background-color);
 
 				margin: 0px;
@@ -171,6 +171,19 @@
 				text-align: end;
 				margin-right: 8px;
 			}
+
+			pre#editorLine > span.active {
+				color: var(--editor-line-color);
+			}
+
+			#contextmenu {
+				z-index: 3;
+				width: 60px;
+				height: 180px;
+				background-color: #2a2a2a;
+				outline: 1px solid #ccd;
+				border-radius: 4px;
+			}
 		</style>
 
 	</head>
@@ -193,7 +206,8 @@
 				--editor-background-color:			#222;
 
 				--editor-line-background-color:		#333;
-				--editor-line-color:				#dde;
+				--editor-line-color:				#fff;
+				--editor-line-color-inactive:		#aab;
 
 				--editor-caret-style:				1px solid #fff;
 
@@ -213,13 +227,15 @@
 
 				<pre id="editorLine"></pre>
 
-				<pre id="editorSurface"><span class="line"><span id="caret" blink="on"></span></span></pre>
+				<pre id="editorSurface"><span id="caret" blink="on"></span></pre>
 
 			</div>
 
 			<div id="scrollTopBar"></div>
 
 			<textarea id="input" wrap="off"></textarea>
+
+			<div class="contextmenu" id="contextmenu"></div>
 
 		</div>
 
@@ -249,7 +265,9 @@
 
 						data: "SLAM\nDUNK\nMOVIE",
 
-						selection: [0, 6],
+						selection: [
+							[0, 6]
+						],
 
 						fileName: "",
 
@@ -287,7 +305,6 @@
 							let temp = Object.create(null);
 
 							[this.fileHandle] = await window.showOpenFilePicker(
-
 								{
 									types: [
 										{
@@ -301,12 +318,9 @@
 									excludeAcceptAllOption: true,
 									multiple: false
 								}
-
 							);
-
 							temp.result = new FileReader;
 							temp.result.readAsText(await this.fileHandle.getFile(), "UTF-8");
-
 							temp.result.onload = event => {
 								this.input.value = event.target.result;
 								globalThis.editor.action.refresh();
@@ -315,9 +329,7 @@
 						},
 
 						save: async () => {
-
 							let temp = Object.create(null);
-
 							if(!this.fileHandle) this.fileHandle = await window.showSaveFilePicker({
 								types: [
 									{
@@ -329,11 +341,9 @@
 									},
 								]
 							});
-
 							temp.writable = await this.fileHandle.createWritable();
 							await temp.writable.write(this.data);
 							await temp.writable.close();
-
 						},
 
 						flush() {
@@ -358,11 +368,15 @@
 						},
 
 						getSelectedData() {
-							return {
-								value: this.data.substring(...this.selection),
-								from: this.selection[0],
-								to: this.selection[1]
-							}
+							let returnArray = [];
+							for(const index of this.selection) {
+								returnArray.push({
+									value: this.data.substring(...index),
+									from: index[0],
+									to: index[1]
+								})
+							};
+							return returnArray;
 						}
 					},
 
@@ -382,33 +396,37 @@
 
 						line: document.getElementById("editorLine"),
 
+						caret: {
+							blink: true
+						},
+
 						lineCount: -1,
 
 						minimalDigits: 3,
 
-						refresh() {
-
+						refresh(init) {
 							let temp = {
-								line: globalThis.editor.buffer.data.split(/\n/g),
+								line: init.data.split(/\n/g),
 								lineDOM: "",
-								currentSurfaceLine: document.getElementById("editorSurface").children
+								surfaceDOM: "",
+								currentSurfaceLine: document.getElementById("editorSurface").children,
+								activeLine: [1],
 							};
-
-							if(this.lineCount - temp.line.length) {
-								temp.lineDigits = temp.line.length.toString().length;
-								if(temp.lineDigits < this.minimalDigits) temp.lineDigits = this.minimalDigits;
-
-								for(let i = 1; i <= temp.line.length; i++) temp.lineDOM += ( " ".repeat(temp.lineDigits - i.toString().length) + i + "\n" );
-
-								this.line.textContent = (temp.lineDOM += "\n".repeat(Math.ceil(document.getElementById("wrapper").clientHeight / 16) - 2));
-								this.lineCount = temp.line.length;
-							};
-
 							// for(let i = 0; i < temp.line.length; i++) {
 							// 	if(temp.currentSurfaceLine[i].textContent !== temp.line[i]) {
 							// 		temp.currentSurfaceLine[i].textContent = temp.line[i]
 							// 	}
 							// }
+							temp.lineDigits = temp.line.length.toString().length;
+							if(temp.lineDigits < this.minimalDigits) temp.lineDigits = this.minimalDigits;
+							for(let i = 1; i <= temp.line.length; i++) {
+								temp.lineDOM += (" ".repeat(temp.lineDigits - i.toString().length) + (
+									(temp.activeLine.includes(i))? "<span class='active'>" + i + "</span>" : i
+								)+ "\n");
+							};
+							this.line.innerHTML = (temp.lineDOM += "\n".repeat(Math.ceil(document.getElementById("wrapper").clientHeight / 16) - 2));
+							// this.surface.innerHTML = 
+							this.lineCount = temp.line.length;
 						}
 					},
 
@@ -431,37 +449,33 @@
 				window.onload = () => {
 
 					[
-						[ () => document.getElementById('caret').setAttribute('blink', (document.getElementById('caret').getAttribute('blink') == 'on')? 'off' : 'on'), 600 ],
+						[() => {
+							document.getElementById('caret').setAttribute('blink', (editor.interface.caret.blink? "off" : "on"));
+							editor.interface.caret.blink = !editor.interface.caret.blink;
+						}, 600],
 
 					].forEach(set => setInterval(...set));
 
 					[
 						[
 							"beforeunload", event => {
-
 								event.preventDefault();
 								event.returnValue = "";
-
 							}, { passive: false }
 						],
 
 						[
 							"wheel", event => {
-
 								event.preventDefault();
-							
 								let temp = Object.create(null);
 								temp.isShiftUnpressed = !editor.buffer.keyProperty.shift;
 								temp.top = (temp.isShiftUnpressed)? "deltaY" : "deltaX";
 								temp.left = (temp.isShiftUnpressed)? "deltaX" : "deltaY";
-
 								document.getElementById("editorGrid").scrollTop += event[temp.top];
 								document.getElementById("editorSurface").scrollLeft += event[temp.left];
-
 								document.getElementById("scrollTopBar").style.transform = "translateY(" + (
 									(document.getElementById("editorGrid").scrollTop / document.getElementById("editorGrid").scrollHeight)
 								) +"px)"
-
 							}, { passive: false }
 						],
 
@@ -506,7 +520,7 @@
 									switch(event.key) {
 										case "Enter":
 											editor.buffer.pushHistory();
-											editor.interface.refresh();
+											editor.interface.refresh(editor.buffer);
 										break;
 									}
 								};
@@ -519,13 +533,33 @@
 							"mouseup", event => {
 								document.getElementById("input").focus();
 							}
+						],
+
+						[
+							"mousedown", event => {
+								switch(event.button) {
+									case 0:
+										if(!event.target.classList.contains("contextmenu")) {
+											document.getElementById("contextmenu").style.zIndex = -1;
+										}
+									break;
+									case 2:
+										document.getElementById("contextmenu").style.zIndex = 3;
+										document.getElementById("contextmenu").style.transform = "translate(" + (event.pageX + 2) + "px," + (event.pageY + 2) + "px)";
+									break;
+								}
+							}
+						],
+
+						[
+							"contextmenu", event => event.preventDefault(), { passive: false }
 						]
 
 					].forEach(index => window.addEventListener(...index));
 
 					for(const instance in editor.timeoutProcess) editor.timeoutProcess[instance]();
 
-					editor.interface.refresh();
+					editor.interface.refresh(editor.buffer);
 
 					document.getElementById("input").focus();
 
