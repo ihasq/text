@@ -177,7 +177,7 @@
 			}
 
 			#contextmenu {
-				z-index: 3;
+				z-index: -1;
 				width: 60px;
 				height: 180px;
 				background-color: #2a2a2a;
@@ -400,6 +400,10 @@
 							blink: true
 						},
 
+						contextmenu:{
+							showed: false,
+						},
+
 						lineCount: -1,
 
 						minimalDigits: 3,
@@ -537,16 +541,20 @@
 
 						[
 							"mousedown", event => {
-								switch(event.button) {
-									case 0:
-										if(!event.target.classList.contains("contextmenu")) {
-											document.getElementById("contextmenu").style.zIndex = -1;
+								// contextmenu appearance control process
+								if(!event.target.classList.contains("contextmenu")) {
+									if(editor.interface.contextmenu.showed) {
+										document.getElementById("contextmenu").style.zIndex = -1;
+										editor.interface.contextmenu.showed = false;
+									} else {
+										switch(event.button) {
+											case 2:
+												document.getElementById("contextmenu").style.zIndex = 3;
+												document.getElementById("contextmenu").style.transform = "translate(" + (event.pageX + 2) + "px," + (event.pageY + 2) + "px)";
+												editor.interface.contextmenu.showed = true;
+											break;
 										}
-									break;
-									case 2:
-										document.getElementById("contextmenu").style.zIndex = 3;
-										document.getElementById("contextmenu").style.transform = "translate(" + (event.pageX + 2) + "px," + (event.pageY + 2) + "px)";
-									break;
+									};
 								}
 							}
 						],
