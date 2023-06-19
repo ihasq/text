@@ -146,9 +146,10 @@
 				color: var(--editor-footer-color);
 
 				font-family: var(--editor-font-family);
-				font-size: var(--editor-font-size);
+				font-size: calc(var(--editor-font-size) * 0.9);
 
-				outline-offset: -0.5px;
+				border-top: 1px solid #555;
+
 				width: 100%;
 				grid-template-columns: 200px auto 400px;
 				overflow: hidden;
@@ -160,7 +161,7 @@
 			}
 
 			div#footer > div.left > span {
-				margin-left: 8px;
+				margin-left: 4px;
 			}
 
 			div#footer > div.right {
@@ -169,7 +170,7 @@
 
 			div#footer > div.right > span {
 				text-align: end;
-				margin-right: 8px;
+				margin-right: 4px;
 			}
 
 			pre#editorLine > span.active {
@@ -181,7 +182,8 @@
 				height: max-content;
 				background-color: #222;
 				outline: 1px solid #555;
-				border-radius: 4px;
+				border-radius: 3px;
+				overflow: hidden;
 			}
 
 			#contextmenu[state="active"] {
@@ -197,7 +199,7 @@
 			}
 
 			#contextmenu > div.group:last-child {
-				border-bottom: none
+				border-bottom: none;
 			}
 
 			#contextmenu > div.group > div.index {
@@ -205,7 +207,7 @@
 				font-size: 13px;
 				font-family: var(--editor-font-family);
 				color: #bbb;
-				padding: 4px 18px;
+				padding: 5px 18px;
 				background-color: transparent;
 			}
 
@@ -214,7 +216,9 @@
 			}
 
 			#contextmenu > div.group > div.index > span:last-child {
+				color: #999;
 				text-align: end;
+				font-size: calc(var(--editor-font-size) * 0.8);
 			}
 
 			#contextmenu > div.group > div.index:hover:not(.disabled) {
@@ -226,8 +230,41 @@
 				padding-top: 7px;
 			}
 
-			#contextmenu > div.group > div.index:last-child {
-				padding-bottom: 6px;
+			#message {
+				height: max-content;
+				width: max-content;
+				inset: calc(100% - 48px) 16px 0 auto;
+				background-color: #222;
+				outline: 1px solid #555;
+				color: #fff;
+				font-family: "Consolas", 'Courier New', "Courier", "Monaco", "monospace";
+				font-size: calc(var(--editor-font-size) * 0.9);
+				padding: 10px 12px;
+				border-radius: 3px;
+				grid-template-columns: max-content 16px max-content;
+			}
+
+			#message[state="hidden"] {
+				z-index: -4;
+			}
+
+			#message[state="active"] {
+				z-index: 4;
+			}
+
+			#message[type="error"] {
+				background-color: #500;
+				outline: 1px solid #f44;
+			}
+
+			#message > .button {
+				color: #bbb;
+				font-size: calc(var(--editor-font-size) * 0.8);
+			}
+
+			#message > .button:hover {
+				background-color: #363636;
+				color: #fff;
 			}
 
 		</style>
@@ -283,6 +320,8 @@
 
 			<div class="contextmenu" id="contextmenu" state="hidden"></div>
 
+			<div class="grid" id="message" state="hidden"><span></span><span></span><span class="button" id="closeMessage">CLOSE</span></div>
+
 		</div>
 
 		<div class="grid" id="footer">
@@ -316,6 +355,8 @@
 						selection: [
 							[0, 6]
 						],
+
+						clipboardData: "COPIED",
 
 						fileName: "",
 
@@ -410,6 +451,32 @@
 
 						redo() {},
 
+						copy() {
+							navigator.clipboard.writeText(this.clipboardData);
+						},
+
+						cut() {
+							navigator.clipboard.writeText(this.clipboardData);
+						},
+
+						paste: async () => {
+							await navigator.permissions.query({ name: "clipboard-read" }).then(res => {
+								switch(res.state) {
+									case "granted":
+									case "prompt":
+										console.log("ok");
+										async () => {
+											await navigator.clipboard.readText().then(text => this.clipboardData = text);
+										};
+										break;
+									case "denied":
+										editor.interface.showMessage("error", 'Clipboard access denied, but Ctrl+V is available.');
+
+								}
+							})
+							
+						},
+
 						pushHistory(init) {
 							this.history.pushQueue();
 							this.input.value = "";
@@ -425,7 +492,7 @@
 								})
 							};
 							return returnArray;
-						}
+						},
 					},
 
 					element: {
@@ -443,6 +510,8 @@
 						surface: document.getElementById("editorSurface"),
 
 						line: document.getElementById("editorLine"),
+
+						message: document.getElementById("message"),
 
 						caret: {
 							blink: true
@@ -464,19 +533,18 @@
 								],
 								[
 									["Copy", {
-										permission: "clipboard-write",
 										command: "Ctrl+C",
-										hint: "Copy selected string to clipboard"
+										hint: "Copy selected string to clipboard",
+										action: "editor.buffer.copy()"
 									}],
 									["Cut", {
-										permission: "clipboard-write",
 										command: "Ctrl+V",
 										hint: "Cut and paste selected string to clipboard"
 									}],
 									["Paste", {
-										permission: "clipboard-read",
 										command: "Ctrl+P",
-										hint: "Paste string from clipboard"
+										hint: "Paste string from clipboard",
+										action: "editor.buffer.paste()"
 									}],
 								],
 								[
@@ -527,6 +595,12 @@
 							this.line.innerHTML = (temp.lineDOM += "\n".repeat(Math.ceil(document.getElementById("wrapper").clientHeight / 16) - 2));
 							// this.surface.innerHTML = 
 							this.lineCount = temp.line.length;
+						},
+
+						showMessage(type, arg) {
+							this.message.children[0].textContent = arg.replace(/\n/g, "");
+							this.message.setAttribute("type", type);
+							this.message.setAttribute("state", "active");
 						}
 					},
 
@@ -548,11 +622,6 @@
 							y: 0
 						}
 					},
-
-					permission: {
-						"clipboard-write": false,
-						"clipboard-read": false
-					}
 				}
 
 				window.onload = () => {
@@ -582,9 +651,7 @@
 								temp.left = (temp.isShiftUnpressed)? "deltaX" : "deltaY";
 								document.getElementById("editorGrid").scrollTop += event[temp.top];
 								document.getElementById("editorSurface").scrollLeft += event[temp.left];
-								document.getElementById("scrollTopBar").style.transform = "translateY(" + (
-									(document.getElementById("editorGrid").scrollTop / document.getElementById("editorGrid").scrollHeight)
-								) +"px)"
+								document.getElementById("scrollTopBar").style.transform = `translateY${(document.getElementById("editorGrid").scrollTop / document.getElementById("editorGrid").scrollHeight)}px`;
 							}, { passive: false }
 						],
 
@@ -623,7 +690,7 @@
 									}
 								} else {
 									temp.caretClientRect = document.getElementById("caret").getBoundingClientRect();
-									document.getElementById("input").style.transform = "translate(" + (temp.caretClientRect.x + 2) + "px," + (temp.caretClientRect.y + 2) + "px)";
+									document.getElementById("input").style.transform = `translate(${(temp.caretClientRect.x + 2)}px,${(temp.caretClientRect.y + 2)}"px)`;
 									editor.buffer.keyProperty.shift = event.shiftKey;
 									switch(event.key) {
 										case "Enter":
@@ -637,7 +704,7 @@
 						// mouse event
 
 						[
-							"mousedown", event => {
+							"pointerdown", event => {
 								// contextmenu appearance control process
 								if(!event.target.classList.contains("contextmenu")) {
 									let temp = {
@@ -668,36 +735,43 @@
 											};
 											temp.ctx.innerHTML = (() => {
 												let html = "";
-												for(const group of editor.interface.contextmenu.operation) {
-													html += "<div class=\"contextmenu group\">";
-													for(const index of group) {
-														html += "<div class=\"grid contextmenu index" + (
-															(!!(index[1].permission) && (!editor.permission[index[1].permission]))? " disabled" : ""
-														) + "\"" + (
-															(!!(index[1].permission) && (!editor.permission[index[1].permission]))? "title=\"Permission required: click to verify\"" : (!!index[1].hint)? ("title=\"" + index[1].hint + "\"") : ""
-														) + (
-															(!!index[1].action)? ("onclick=\"" + index[1].action + "\"") : ""
-														) + (
-															(!!(index[1].permission) && (!editor.permission[index[1].permission]))? "style=\"cursor: not-allowed\"": ""
-														) + "><span class=\"contextmenu\">" + index[0] + "</span><span class=\"contextmenu\">" + (
-															(!!index[1].command)? index[1].command : ""
-														) + "</span></div>";
-													};
-													html += "</div>";
-												};
-												return html
+												for(const group of editor.interface.contextmenu.operation) html += `
+													<div class=\"contextmenu group\">${(() => {
+														let component = "";
+														for(const index of group) component += `
+															<div class="grid contextmenu index"${((!!index[1].hint)? ("title=\"" + index[1].hint + "\"") : "")+((!!index[1].action)? ("onclick=\"" + index[1].action + "\"") : "")}>
+																<span class="contextmenu">${index[0]}</span>
+																<span class="contextmenu">${((!!index[1].command)? index[1].command : "")}</span>
+															</div>
+														`;
+														return component;
+													})()}</div>
+												`;
+												return html.replace(/\t|\n/g, "");
 											})();
 											editor.mode = "contextmenu";
 											temp.ctx.setAttribute("state", "active");
 											editor.interface.contextmenu.showed = true;
 									};
+									switch(event.target.id) {
+										case "closeMessage":
+											document.getElementById("message").setAttribute("state", "hidden")
+										break;
+									}
+								} else {
 								}
 							}
 						],
 
 						[
-							"mouseup", event => {
-								document.getElementById("input").focus();
+							"pointerup", event => {
+								console.log(event.target.textContent)
+								if(event.target.classList.contains("contextmenu")) {
+									if(event.target.textContent === "Copy") {
+									}
+								} else {
+									document.getElementById("input").focus();
+								}
 							}, { passive: true }
 						],
 
@@ -712,6 +786,8 @@
 					editor.interface.refresh(editor.buffer);
 
 					document.getElementById("input").focus();
+
+					document.getElementById("editorSurface").append()
 
 				}
 			}
