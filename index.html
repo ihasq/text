@@ -470,7 +470,7 @@
 										};
 										break;
 									case "denied":
-										editor.interface.showMessage("error", 'Clipboard access denied, but Ctrl+V is available.');
+										editor.interface.showMessageProc("error", 'Clipboard access denied, but Ctrl+V is available.');
 
 								}
 							})
@@ -513,8 +513,14 @@
 
 						message: document.getElementById("message"),
 
+						ctx: document.getElementById("contextmenu"),
+
 						caret: {
 							blink: true
+						},
+
+						keyProperty: {
+							shift: false
 						},
 
 						contextmenu:{
@@ -538,11 +544,11 @@
 										action: "editor.buffer.copy()"
 									}],
 									["Cut", {
-										command: "Ctrl+V",
+										command: "Ctrl+X",
 										hint: "Cut and paste selected string to clipboard"
 									}],
 									["Paste", {
-										command: "Ctrl+P",
+										command: "Ctrl+V",
 										hint: "Paste string from clipboard",
 										action: "editor.buffer.paste()"
 									}],
@@ -597,10 +603,64 @@
 							this.lineCount = temp.line.length;
 						},
 
-						showMessage(type, arg) {
+						showMessageProc(type, arg) {
 							this.message.children[0].textContent = arg.replace(/\n/g, "");
 							this.message.setAttribute("type", type);
 							this.message.setAttribute("state", "active");
+						},
+
+						closeMessageProc() {
+							this.message.setAttribute("state", "hidden");
+						},
+
+						scrollProc() {
+							let temp = {
+								top: (!this.keyProperty.shift)? "deltaY" : "deltaX",
+								left: (!this.keyProperty.shift)? "deltaX" : "deltaY",
+							};
+							document.getElementById("editorGrid").scrollTop += event[temp.top];
+							document.getElementById("editorSurface").scrollLeft += event[temp.left];
+							document.getElementById("scrollTopBar").style.transform = `translateY${(document.getElementById("editorGrid").scrollTop / document.getElementById("editorGrid").scrollHeight)}px`;
+						},
+
+						showContextMenuProc() {
+							let temp = Object.create(null);
+							if(event.pageX !== editor.previousProperty.page.x || event.pageY !== editor.previousProperty.page.y) {
+								temp.clientRect = this.ctx.getBoundingClientRect();
+								this.ctx.style.transform = `translate(${
+									event.pageX + 2 - (((event.pageX + temp.clientRect.width) > window.innerWidth)? (temp.clientRect.width + 4) : -4)
+								}px,${
+									event.pageY + 2 - (((event.pageY + temp.clientRect.height) > window.innerHeight)? (temp.clientRect.height + 4) : -4)
+								}px)`;
+								editor.previousProperty.page = {
+									x: event.pageX,
+									y: event.pageY
+								};
+							};
+							this.ctx.innerHTML = (() => {
+								let html = "";
+								for(const group of editor.interface.contextmenu.operation) html += `
+									<div class=\"contextmenu group\">${(() => {
+										let component = "";
+										for(const index of group) component += `
+											<div class="grid contextmenu index"${((!!index[1].hint)? ("title=\"" + index[1].hint + "\"") : "")}>
+												<span class="contextmenu">${index[0]}</span><span class="contextmenu">${((!!index[1].command)? index[1].command : "")}</span>
+											</div>
+										`;
+										return component;
+									})()}</div>
+								`;
+								return html.replace(/\t|\n/g, "");
+							})();
+							editor.mode = "contextmenu";
+							this.ctx.setAttribute("state", "active");
+							editor.interface.contextmenu.showed = true;
+						},
+
+						hideContextMenuProc() {
+							this.ctx.setAttribute("state", "hidden");
+							editor.mode = "insertion";
+							editor.interface.contextmenu.showed = false;
 						}
 					},
 
@@ -645,13 +705,7 @@
 						[
 							"wheel", event => {
 								event.preventDefault();
-								let temp = Object.create(null);
-								temp.isShiftUnpressed = !editor.buffer.keyProperty.shift;
-								temp.top = (temp.isShiftUnpressed)? "deltaY" : "deltaX";
-								temp.left = (temp.isShiftUnpressed)? "deltaX" : "deltaY";
-								document.getElementById("editorGrid").scrollTop += event[temp.top];
-								document.getElementById("editorSurface").scrollLeft += event[temp.left];
-								document.getElementById("scrollTopBar").style.transform = `translateY${(document.getElementById("editorGrid").scrollTop / document.getElementById("editorGrid").scrollHeight)}px`;
+								editor.interface.scrollProc(event);
 							}, { passive: false }
 						],
 
@@ -704,67 +758,25 @@
 						// mouse event
 
 						[
-							"pointerdown", event => {
+							"mousedown", event => {
 								// contextmenu appearance control process
 								if(!event.target.classList.contains("contextmenu")) {
-									let temp = {
-										ctx: document.getElementById("contextmenu"),
+									if(editor.interface.contextmenu.showed) {
+										editor.interface.hideContextMenuProc();
+									} else if(event.button === 2) {
+										editor.interface.showContextMenuProc();
 									};
-									switch(true) {
-										case editor.interface.contextmenu.showed:
-											temp.ctx.setAttribute("state", "hidden");
-											editor.mode = "insertion";
-											editor.interface.contextmenu.showed = false;
-											break;
-										case (event.button === 2):
-											if(event.pageX !== editor.previousProperty.page.x || event.pageY !== editor.previousProperty.page.y) {
-												temp.clientRect = temp.ctx.getBoundingClientRect();
-												temp.ctx.style.transform = "translate(" + (
-													event.pageX + 2 - (
-														((event.pageX + temp.clientRect.width) > window.innerWidth)? (temp.clientRect.width + 4) : -4
-													)
-												) + "px," + (
-													event.pageY + 2 - (
-														((event.pageY + temp.clientRect.height) > window.innerHeight)? (temp.clientRect.height + 4) : -4
-													)
-												) + "px)";
-												editor.previousProperty.page = {
-													x: event.pageX,
-													y: event.pageY
-												};
-											};
-											temp.ctx.innerHTML = (() => {
-												let html = "";
-												for(const group of editor.interface.contextmenu.operation) html += `
-													<div class=\"contextmenu group\">${(() => {
-														let component = "";
-														for(const index of group) component += `
-															<div class="grid contextmenu index"${((!!index[1].hint)? ("title=\"" + index[1].hint + "\"") : "")+((!!index[1].action)? ("onclick=\"" + index[1].action + "\"") : "")}>
-																<span class="contextmenu">${index[0]}</span>
-																<span class="contextmenu">${((!!index[1].command)? index[1].command : "")}</span>
-															</div>
-														`;
-														return component;
-													})()}</div>
-												`;
-												return html.replace(/\t|\n/g, "");
-											})();
-											editor.mode = "contextmenu";
-											temp.ctx.setAttribute("state", "active");
-											editor.interface.contextmenu.showed = true;
-									};
-									switch(event.target.id) {
-										case "closeMessage":
-											document.getElementById("message").setAttribute("state", "hidden")
-										break;
-									}
-								} else {
-								}
+								};
+								switch(event.target.id) {
+									case "closeMessage":
+										editor.interface.closeMessageProc();
+									break;
+								};
 							}
 						],
 
 						[
-							"pointerup", event => {
+							"mouseup", event => {
 								console.log(event.target.textContent)
 								if(event.target.classList.contains("contextmenu")) {
 									if(event.target.textContent === "Copy") {
@@ -786,8 +798,6 @@
 					editor.interface.refresh(editor.buffer);
 
 					document.getElementById("input").focus();
-
-					document.getElementById("editorSurface").append()
 
 				}
 			}
