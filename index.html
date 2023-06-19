@@ -263,7 +263,6 @@
 			}
 
 			#message > .button:hover {
-				background-color: #363636;
 				color: #fff;
 			}
 
@@ -470,7 +469,7 @@
 										};
 										break;
 									case "denied":
-										editor.interface.showMessageProc("error", 'Clipboard access denied, but Ctrl+V is available.');
+										editor.interface.showMessageProc("error", 'Clipboard access rejected, but Ctrl+V is available.');
 
 								}
 							})
@@ -526,57 +525,67 @@
 						contextmenu:{
 							showed: false,
 							operation: [
-								[
-									["Undo", {
+								{
+									Undo: {
 										command: "Ctrl+Z",
 										hint: "Undo operation",
 										action: "editor.buffer.undo()"
-									}],
-									["Redo", {
+									},
+									Redo: {
 										command: "Ctrl+Y",
-										hint: "Redo operation"
-									}],
-								],
-								[
-									["Copy", {
+										hint: "Redo operation",
+										action: "editor.buffer.redo()"
+									},
+								},
+								{
+									Copy: {
 										command: "Ctrl+C",
 										hint: "Copy selected string to clipboard",
 										action: "editor.buffer.copy()"
-									}],
-									["Cut", {
+									},
+									Cut: {
 										command: "Ctrl+X",
-										hint: "Cut and paste selected string to clipboard"
-									}],
-									["Paste", {
+										hint: "Cut and paste selected string to clipboard",
+										action: "editor.buffer.cut()"
+									},
+									Paste: {
 										command: "Ctrl+V",
 										hint: "Paste string from clipboard",
 										action: "editor.buffer.paste()"
-									}],
-								],
-								[
-									["Save", {
+									},
+								},
+								{
+									Save: {
 										command: "Ctrl+S",
-										hint: "Copy selected string to clipboard"
-									}],
-									["New", {
+										hint: "Copy selected string to clipboard",
+										action: "editor.buffer.save()"
+									},
+									New: {
 										command: "Ctrl+N",
-										hint: "Cut and paste selected string to clipboard"
-									}],
-									["Open", {
+										hint: "Cut and paste selected string to clipboard",
+										action: "editor.buffer.flush()"
+									},
+									Open: {
 										command: "Ctrl+O",
-										hint: "Paste string from clipboard"
-									}],
-								],
-								[
-									["Settings", {}],
-									["About Text app", {}]
-								],
+										hint: "Paste string from clipboard",
+										action: "editor.buffer.open()"
+									},
+								},
+								{
+									Settings: {},
+									"About Text app": {}
+								},
 							]
 						},
 
 						lineCount: -1,
 
 						minimalDigits: 3,
+
+						previousProperty: {
+							x: 0,
+							y: 0
+						},
 
 						refresh(init) {
 							let temp = {
@@ -625,26 +634,28 @@
 
 						showContextMenuProc() {
 							let temp = Object.create(null);
-							if(event.pageX !== editor.previousProperty.page.x || event.pageY !== editor.previousProperty.page.y) {
+							// calculate and set contextmenu location
+							if(event.pageX !== this.previousProperty.x || event.pageY !== this.previousProperty.y) {
 								temp.clientRect = this.ctx.getBoundingClientRect();
 								this.ctx.style.transform = `translate(${
 									event.pageX + 2 - (((event.pageX + temp.clientRect.width) > window.innerWidth)? (temp.clientRect.width + 4) : -4)
 								}px,${
 									event.pageY + 2 - (((event.pageY + temp.clientRect.height) > window.innerHeight)? (temp.clientRect.height + 4) : -4)
 								}px)`;
-								editor.previousProperty.page = {
+								this.previousProperty = {
 									x: event.pageX,
 									y: event.pageY
 								};
 							};
+							// render and place html from configuration
 							this.ctx.innerHTML = (() => {
 								let html = "";
 								for(const group of editor.interface.contextmenu.operation) html += `
 									<div class=\"contextmenu group\">${(() => {
 										let component = "";
-										for(const index of group) component += `
-											<div class="grid contextmenu index"${((!!index[1].hint)? ("title=\"" + index[1].hint + "\"") : "")}>
-												<span class="contextmenu">${index[0]}</span><span class="contextmenu">${((!!index[1].command)? index[1].command : "")}</span>
+										for(const index in group) component += `
+											<div class="grid contextmenu index" title="${group[index].hint}" onclick="${group[index].action}">
+												<span class="contextmenu">${index}</span><span class="contextmenu">${((!!group[index].command)? group[index].command : "")}</span>
 											</div>
 										`;
 										return component;
@@ -652,9 +663,8 @@
 								`;
 								return html.replace(/\t|\n/g, "");
 							})();
-							editor.mode = "contextmenu";
 							this.ctx.setAttribute("state", "active");
-							editor.interface.contextmenu.showed = true;
+							this.contextmenu.showed = true;
 						},
 
 						hideContextMenuProc() {
@@ -662,15 +672,6 @@
 							editor.mode = "insertion";
 							editor.interface.contextmenu.showed = false;
 						}
-					},
-
-					editorProperty: {
-
-						editorLine: 0,
-						focusLine: 1,
-						currentBufferId: -1,
-						minimalDigits: 3
-
 					},
 
 					selectionProperty: null,
@@ -765,12 +766,14 @@
 										editor.interface.hideContextMenuProc();
 									} else if(event.button === 2) {
 										editor.interface.showContextMenuProc();
+										editor.mode = "contextmenu";
 									};
-								};
+								} else {
+								}
 								switch(event.target.id) {
 									case "closeMessage":
 										editor.interface.closeMessageProc();
-									break;
+										break;
 								};
 							}
 						],
@@ -779,8 +782,7 @@
 							"mouseup", event => {
 								console.log(event.target.textContent)
 								if(event.target.classList.contains("contextmenu")) {
-									if(event.target.textContent === "Copy") {
-									}
+									editor.interface.hideContextMenuProc();
 								} else {
 									document.getElementById("input").focus();
 								}
