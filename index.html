@@ -97,7 +97,7 @@
 				min-height: 100%;
 
 				margin: 0px;
-				padding: 6px 10px;
+				padding: 6px 10px 0px;
 
 				cursor: text;
 
@@ -141,34 +141,34 @@
 				padding: 0px;
 			}
 
-			div#footer {
+			#footer {
 				background-color: #292929;
 				color: var(--editor-footer-color);
 
 				font-family: var(--editor-font-family);
 				font-size: calc(var(--editor-font-size) * 0.9);
 
-				border-top: 1px solid #555;
+				border-top: 1px solid #333;
 
 				width: 100%;
 				grid-template-columns: 200px auto 400px;
 				overflow: hidden;
 			}
 
-			div#footer > div {
+			#footer > div {
 				width: auto;
 				margin: auto 6px;
 			}
 
-			div#footer > div.left > span {
+			#footer > div.left > span {
 				margin-left: 4px;
 			}
 
-			div#footer > div.right {
+			#footer > div.right {
 				text-align: end;
 			}
 
-			div#footer > div.right > span {
+			#footer > div.right > span {
 				text-align: end;
 				margin-right: 4px;
 			}
@@ -341,21 +341,23 @@
 
 					buffer: {
 
-						isExecCommandEnabled: true,
-
 						keyProperty: {
 							shift: false
 						},
 						
 						input: document.getElementById("input"),
 
-						data: "SLAM\nDUNK\nMOVIE",
+						data: [],
 
 						selection: [
-							[0, 6]
+							[0, 6],
 						],
 
-						clipboardData: "COPIED",
+						caret: [
+							0
+						],
+
+						clipboardData: "",
 
 						fileName: "",
 
@@ -410,7 +412,7 @@
 							temp.result = new FileReader;
 							temp.result.readAsText(await this.fileHandle.getFile(), "UTF-8");
 							temp.result.onload = event => {
-								this.input.value = event.target.result;
+								this.data = event.target.result.split("");
 								globalThis.editor.action.refresh();
 							}
 
@@ -430,7 +432,7 @@
 								]
 							});
 							temp.writable = await this.fileHandle.createWritable();
-							await temp.writable.write(this.data);
+							await temp.writable.write(this.data.join(""));
 							await temp.writable.close();
 						},
 
@@ -450,12 +452,30 @@
 
 						redo() {},
 
-						copy() {
-							navigator.clipboard.writeText(this.clipboardData);
+						copy(executedFrom) {
+							let text = "";
+							for(const index of this.selection) {
+								text += (this.data.join("").substring(...index) + "\n")
+							};
+							switch(executedFrom) {
+								case "contextmenu":
+									navigator.clipboard.writeText(text);
+									break;
+								case "shortcut":
+									editor.interface.input.value = text;
+									setTimeout(() => {
+										editor.interface.input.value = "";
+									}, 0)
+									break;
+							}
 						},
 
-						cut() {
-							navigator.clipboard.writeText(this.clipboardData);
+						cut(executedFrom) {
+							this.copy(executedFrom);
+							this.selection.forEach(index => this.data.fill(0, index[0], index[1]));
+							this.data = this.data.filter(index => index !== 0);
+							this.selection = [];
+							console.log(this.data)
 						},
 
 						paste: async () => {
@@ -508,6 +528,8 @@
 
 						surface: document.getElementById("editorSurface"),
 
+						grid: document.getElementById("editorGrid"),
+
 						line: document.getElementById("editorLine"),
 
 						message: document.getElementById("message"),
@@ -541,12 +563,12 @@
 									Copy: {
 										command: "Ctrl+C",
 										hint: "Copy selected string to clipboard",
-										action: "editor.buffer.copy()"
+										action: "editor.buffer.copy('contextmenu')"
 									},
 									Cut: {
 										command: "Ctrl+X",
 										hint: "Cut and paste selected string to clipboard",
-										action: "editor.buffer.cut()"
+										action: "editor.buffer.cut('contextmenu')"
 									},
 									Paste: {
 										command: "Ctrl+V",
@@ -589,17 +611,12 @@
 
 						refresh(init) {
 							let temp = {
-								line: init.data.split(/\n/g),
+								line: init.data.filter(index => index === "\n"),
 								lineDOM: "",
 								surfaceDOM: "",
 								currentSurfaceLine: document.getElementById("editorSurface").children,
 								activeLine: [1],
 							};
-							// for(let i = 0; i < temp.line.length; i++) {
-							// 	if(temp.currentSurfaceLine[i].textContent !== temp.line[i]) {
-							// 		temp.currentSurfaceLine[i].textContent = temp.line[i]
-							// 	}
-							// }
 							temp.lineDigits = temp.line.length.toString().length;
 							if(temp.lineDigits < this.minimalDigits) temp.lineDigits = this.minimalDigits;
 							for(let i = 1; i <= temp.line.length; i++) {
@@ -627,8 +644,9 @@
 								top: (!this.keyProperty.shift)? "deltaY" : "deltaX",
 								left: (!this.keyProperty.shift)? "deltaX" : "deltaY",
 							};
-							document.getElementById("editorGrid").scrollTop += event[temp.top];
-							document.getElementById("editorSurface").scrollLeft += event[temp.left];
+							this.grid.scrollTop += event[temp.top];
+							if(this.lineCount === 1) this.grid.scrollTop = 0;
+							this.surface.scrollLeft += event[temp.left];
 							document.getElementById("scrollTopBar").style.transform = `translateY${(document.getElementById("editorGrid").scrollTop / document.getElementById("editorGrid").scrollHeight)}px`;
 						},
 
@@ -686,6 +704,8 @@
 				}
 
 				window.onload = () => {
+
+					editor.buffer.data = "123456789\n123456789\n123456789\n123456789\n123456789\n".split("");
 
 					[
 						[() => {
@@ -759,7 +779,7 @@
 						// mouse event
 
 						[
-							"mousedown", event => {
+							"pointerdown", event => {
 								// contextmenu appearance control process
 								if(!event.target.classList.contains("contextmenu")) {
 									if(editor.interface.contextmenu.showed) {
@@ -779,7 +799,7 @@
 						],
 
 						[
-							"mouseup", event => {
+							"pointerup", event => {
 								console.log(event.target.textContent)
 								if(event.target.classList.contains("contextmenu")) {
 									editor.interface.hideContextMenuProc();
