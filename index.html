@@ -400,13 +400,13 @@
 						set(value) {
 							switch (typeof value) {
 								case "string":
-									this.data = value.split("");
+									this.data = value;
 									break;
 								case "number":
-									this.data = String(value).split("");
+									this.data = String(value);
 									break;
 								case "array":
-									this.data = value.join("").split("");
+									this.data = value.join("");
 									break;
 								default:
 									throw new Error("Failed to assign: value type is invalid")
@@ -435,8 +435,7 @@
 							temp.result = new FileReader;
 							temp.result.readAsText(await this.fileHandle.getFile(), "UTF-8");
 							temp.result.onload = event => {
-								editor.buffer.set(event.target.result);
-								// globalThis.editor.action.refresh();
+								globalThis.editor.buffer.data = event.target.result.split("")
 							}
 
 						},
@@ -475,42 +474,6 @@
 
 						redo() {},
 
-						copy(executedFrom) {
-							console.log("copy")
-							let temp = {
-								text: "",
-							}
-							for(const index of this.selection) {
-								if(index[0] < this.selectedData.opArea[0]) this.selectedData.opArea[0] = index[0];
-								if(index[1] > this.selectedData.opArea[1]) this.selectedData.opArea[1] = index[1];
-							}
-							temp.data = this.data.slice(...this.selectedData.opArea);
-							temp.selection = this.selection.map(index => index.map(selection => selection - this.selectedData.opArea[0]))
-							for(const index of temp.selection) {
-								temp.text += temp.data.slice(...index).join("") + "\n"
-							};
-							switch(executedFrom) {
-								case "contextmenu":
-									navigator.clipboard.writeText(temp.text);
-									break;
-								case "shortcut":
-									editor.interface.input.value = temp.text;
-									setTimeout(() => {
-										editor.interface.input.value = "";
-									}, 0)
-									break;
-							}
-						},
-
-						cut(executedFrom) {
-							this.copy(executedFrom)
-							this.data.splice
-							this.selection.forEach(index => this.data.fill(null, index[0], index[1]));
-							this.data = this.data.filter(index => index !== null);
-							this.selection = [];
-							console.log(this.data.join(""))
-						},
-
 						paste: async () => {
 							await navigator.permissions.query({ name: "clipboard-read" }).then(res => {
 								switch(res.state) {
@@ -534,17 +497,45 @@
 							this.input.value = "";
 						},
 
-						getSelectedData() {
-							let returnArray = [];
-							for(const index of this.selection) {
-								returnArray.push({
-									value: this.data.substring(...index),
-									from: index[0],
-									to: index[1]
-								})
-							};
-							return returnArray;
+						nullCollection() {
+							this.data = this.data.filter(index => index !== null)
 						},
+
+						setSelection(from, to) {
+							this.nullCollection();
+						},
+
+						getSelectedData() {
+							if(!!this.selection.length) {
+								let temp = {
+									text: "",
+									data: [],
+									selection: [],
+									selectedArea: [Infinity, 0],
+								}
+								for(const index of this.selection) {
+									if(index[0] < temp.selectedArea[0]) temp.selectedArea[0] = index[0];
+									if(index[1] > temp.selectedArea[1]) temp.selectedArea[1] = index[1];
+								}
+								temp.data = this.data.slice(temp.selectedArea[0], temp.selectedArea[1] + 1);
+								temp.selection = this.selection.map(index => index.map(selection => selection - temp.selectedArea[0]))
+								for(const index of temp.selection) {
+									temp.text += temp.data.slice(index[0], index[1] + 1) + "\n"
+								};
+								return temp.text
+							}
+						},
+
+						reduceSelectedData() {
+							this.selection.forEach(index => {
+								for(let i = index[0]; i < index[1]; i++) this.data[i] = null
+							})
+							this.nullCollection();
+						},
+
+						render() {
+
+						}
 					},
 
 					element: {
@@ -596,12 +587,12 @@
 									Copy: {
 										command: "Ctrl+C",
 										hint: "Copy selected string to clipboard",
-										action: "editor.buffer.copy('contextmenu')"
+										action: "editor.copy('contextmenu')"
 									},
 									Cut: {
 										command: "Ctrl+X",
 										hint: "Cut and paste selected string to clipboard",
-										action: "editor.buffer.cut('contextmenu')"
+										action: "editor.cut('contextmenu')"
 									},
 									Paste: {
 										command: "Ctrl+V",
@@ -644,7 +635,7 @@
 
 						refresh(init) {
 							let temp = {
-								line: init.data.filter(index => index === "\n"),
+								line: init.data.split("").filter(index => index === "\n"),
 								lineDOM: "",
 								surfaceDOM: "",
 								currentSurfaceLine: document.getElementById("editorSurface").children,
@@ -734,11 +725,34 @@
 							y: 0
 						}
 					},
+
+					// global methods: called by contextmenu or shortcuts
+
+					copy(executedFrom) {
+						let temp = Object.create(null);
+						temp.text = editor.buffer.getSelectedData();
+						switch(executedFrom) {
+							case "contextmenu":
+								navigator.clipboard.writeText(temp.text);
+								break;
+							case "shortcut":
+								editor.interface.input.value = temp.text;
+								setTimeout(() => {
+									editor.interface.input.value = "";
+								}, 0)
+								break;
+						}
+					},
+
+					cut(executedFrom) {
+						this.copy(executedFrom);
+						editor.buffer.reduceSelectedData();
+					},
 				}
 
 				window.onload = () => {
 
-					editor.buffer.data = "123456789\n123456789\n123456789\n123456789\n123456789\n".split("");
+					editor.buffer.data = "x".repeat(50000).split("");
 
 					[
 						[() => {
@@ -851,7 +865,7 @@
 
 					for(const instance in editor.timeoutProcess) editor.timeoutProcess[instance]();
 
-					editor.interface.refresh(editor.buffer);
+					// editor.interface.refresh(editor.buffer);
 
 					document.getElementById("input").focus();
 
