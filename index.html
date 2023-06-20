@@ -1,6 +1,6 @@
 <!--
 
-	Text v0.0.1
+	Byter v0.0.1
 
 	created and maintained by https://ihasq.com
 
@@ -78,8 +78,10 @@
 				color: var(--editor-line-color-inactive);
 				background-color: var(--editor-line-background-color);
 
+				border-right: 1px solid #363636;
+
 				margin: 0px;
-				padding: 6px;
+				padding: 6px 3px;
 			}
 
 			#editorSurface {
@@ -142,13 +144,13 @@
 			}
 
 			#footer {
-				background-color: #292929;
+				background-color: #212224;
 				color: var(--editor-footer-color);
 
 				font-family: var(--editor-font-family);
 				font-size: calc(var(--editor-font-size) * 0.9);
 
-				border-top: 1px solid #333;
+				border-top: 1px solid #363636;
 
 				width: 100%;
 				grid-template-columns: 200px auto 400px;
@@ -173,14 +175,14 @@
 				margin-right: 4px;
 			}
 
-			pre#editorLine > span.active {
+			#editorLine > span.active {
 				color: var(--editor-line-color);
 			}
 
 			#contextmenu {
 				width: 220px;
 				height: max-content;
-				background-color: #222;
+				background-color: #242429;
 				outline: 1px solid #555;
 				border-radius: 3px;
 				overflow: hidden;
@@ -285,9 +287,9 @@
 				--editor-footer-color:				#dde;
 
 				--editor-color:						#fff;
-				--editor-background-color:			#222;
+				--editor-background-color:			#222326;
 
-				--editor-line-background-color:		#333;
+				--editor-line-background-color:		#27282a;
 				--editor-line-color:				#fff;
 				--editor-line-color-inactive:		#aab;
 
@@ -295,7 +297,7 @@
 
 				--editor-focus-outline:				none;
 
-				--editor-lineNumber-width:			40px;
+				--editor-lineNumber-width:			36px;
 
 				--editor-scrollBar-activeWidth:		16px;
 				--editor-scrollBar-minimalWidth:	4px;
@@ -347,7 +349,7 @@
 						
 						input: document.getElementById("input"),
 
-						data: "",
+						data: [],
 
 						selection: [
 							[100, 130],
@@ -363,6 +365,10 @@
 						caret: [
 							0
 						],
+
+						operationCaret: 0,
+
+						gap: undefined,
 
 						clipboardData: "",
 
@@ -456,6 +462,43 @@
 						setSelection(from, to) {
 						},
 
+						operate(init) {
+							switch(init.type) {
+								case "get":
+									break;
+								case "set":
+									for(let i = 0; i < init.from.length; i++) {
+										this.operationCaret = init.from[i];
+										for(let j = 0; j < init.data.length; j++) {
+											if(this.data[this.operationCaret] === null) {
+												this.data[this.operationCaret] = init.data[j];
+												this.operationCaret++;
+												this.gap[0]++;
+												if(this.gap[0] === this.gap[1]) this.gap = undefined;
+											} else if(this.data[this.operationCaret - 1] === null) {
+												this.data[this.operationCaret - 1] = init.data[j];
+												this.gap[1]--;
+												if(this.gap[0] === this.gap[1]) this.gap = undefined;
+											} else {
+												if(this.gap === undefined) {
+													this.data.splice(this.operationCaret, 0, init.data[j], null, null, null, null, null, null, null);
+													this.operationCaret++;
+													this.gap = [this.operationCaret, this.operationCaret + 7];
+												} else {
+													let caretBuffer = this.operationCaret - this.gap[1];
+													this.data.splice(this.gap[0], this.operationCaret, ...this.data.slice(this.gap[1], this.operationCaret), ...this.data.slice(this.gap[0], this.gap[1]));
+													for(let i = 0; i < 2; i++) this.gap[i] += caretBuffer;
+													this.data[this.operationCaret - 1] = init.data[j];
+													this.gap[1]--;
+												}
+											};
+										}
+									}
+									break;
+								case "del":
+							}
+						},
+
 						getSelectedData(init) {
 							if(!!this.selection.length) {
 								this.data = this.data.split("");
@@ -499,7 +542,15 @@
 										editor.interface.input.value = "";
 									}, 0)
 									break;
-						}
+							}
+						},
+
+						dev() {
+							this.operate({
+								type: "set",
+								data: "abcde".repeat(10),
+								from: [0, 500, 200, 700, 400, 800]
+							});
 						}
 					},
 
@@ -580,6 +631,25 @@
 										command: "Ctrl+O",
 										hint: "Paste string from clipboard",
 										action: "editor.open()"
+									},
+								},
+								{
+									Search: {
+										command: "Ctrl+F",
+										hint: "Copy selected string to clipboard",
+										action: "editor.save()"
+									},
+									Replace: {
+										command: "Ctrl+H",
+										hint: "Cut and paste selected string to clipboard",
+										action: "editor.buffer.flush()"
+									},
+								},
+								{
+									Operate: {
+										command: "Ctrl+F",
+										hint: "Copy selected string to clipboard",
+										action: "editor.buffer.dev()"
 									},
 								},
 								{
@@ -704,7 +774,7 @@
 					},
 
 					getInstance(init) {
-						
+
 					},
 
 					copy(executedFrom) {
@@ -769,11 +839,7 @@
 
 				window.onload = () => {
 
-					editor.createInstance({
-						name: "html",
-					})
-
-					editor.buffer.data = "x".repeat(100000);
+					editor.buffer.data = "x".repeat(100000).split("");
 
 					[
 						[() => {
