@@ -347,7 +347,7 @@
 						
 						input: document.getElementById("input"),
 
-						data: [],
+						data: "",
 
 						selection: [
 							[100, 130],
@@ -397,6 +397,8 @@
 							}
 						},
 
+						instance: Object.create(null),
+
 						set(value) {
 							switch (typeof value) {
 								case "string":
@@ -411,51 +413,6 @@
 								default:
 									throw new Error("Failed to assign: value type is invalid")
 							}
-						},
-
-						open: async (readAs) => {
-
-							let temp = Object.create(null);
-
-							[this.fileHandle] = await window.showOpenFilePicker(
-								{
-									types: [
-										{
-											description: "Text file",
-											accept: {
-												"text/*": [],
-												"application/*": []
-											},
-										}
-									],
-									excludeAcceptAllOption: true,
-									multiple: false
-								}
-							);
-							temp.result = new FileReader;
-							temp.result.readAsText(await this.fileHandle.getFile(), "UTF-8");
-							temp.result.onload = event => {
-								globalThis.editor.buffer.data = event.target.result.split("")
-							}
-
-						},
-
-						save: async () => {
-							let temp = Object.create(null);
-							if(!this.fileHandle) this.fileHandle = await window.showSaveFilePicker({
-								types: [
-									{
-										description: "Text file",
-										accept: {
-											"text/*": [],
-											"application/*": []
-										}
-									},
-								]
-							});
-							temp.writable = await this.fileHandle.createWritable();
-							await temp.writable.write(this.data.join(""));
-							await temp.writable.close();
 						},
 
 						flush() {
@@ -489,7 +446,6 @@
 
 								}
 							})
-							
 						},
 
 						pushHistory(init) {
@@ -497,18 +453,14 @@
 							this.input.value = "";
 						},
 
-						nullCollection() {
-							this.data = this.data.filter(index => index !== null)
-						},
-
 						setSelection(from, to) {
-							this.nullCollection();
 						},
 
-						getSelectedData() {
+						getSelectedData(init) {
 							if(!!this.selection.length) {
+								this.data = this.data.split("");
 								let temp = {
-									text: "",
+									text: [],
 									data: [],
 									selection: [],
 									selectedArea: [Infinity, 0],
@@ -520,21 +472,34 @@
 								temp.data = this.data.slice(temp.selectedArea[0], temp.selectedArea[1] + 1);
 								temp.selection = this.selection.map(index => index.map(selection => selection - temp.selectedArea[0]))
 								for(const index of temp.selection) {
-									temp.text += temp.data.slice(index[0], index[1] + 1) + "\n"
+									temp.text.push(temp.data.slice(index[0], index[1] + 1).join(""))
 								};
-								return temp.text
+								if(init.reduce === true) {
+									this.selection.forEach(index => {
+										for(let i = index[0]; i < index[1]; i++) this.data[i] = null
+									})
+								}
+								this.data = this.data.join("");
+								return ((init.type === "string")? temp.text.join("\n") : temp.text)
 							}
-						},
-
-						reduceSelectedData() {
-							this.selection.forEach(index => {
-								for(let i = index[0]; i < index[1]; i++) this.data[i] = null
-							})
-							this.nullCollection();
 						},
 
 						render() {
 
+						},
+
+						pasteToClipboard(init) {
+							switch(init.executedFrom) {
+								case "contextmenu":
+									navigator.clipboard.writeText(init.text);
+									break;
+								case "shortcut":
+									editor.interface.input.value = init.text;
+									setTimeout(() => {
+										editor.interface.input.value = "";
+									}, 0)
+									break;
+						}
 						}
 					},
 
@@ -604,7 +569,7 @@
 									Save: {
 										command: "Ctrl+S",
 										hint: "Copy selected string to clipboard",
-										action: "editor.buffer.save()"
+										action: "editor.save()"
 									},
 									New: {
 										command: "Ctrl+N",
@@ -614,7 +579,7 @@
 									Open: {
 										command: "Ctrl+O",
 										hint: "Paste string from clipboard",
-										action: "editor.buffer.open()"
+										action: "editor.open()"
 									},
 								},
 								{
@@ -728,37 +693,93 @@
 
 					// global methods: called by contextmenu or shortcuts
 
-					copy(executedFrom) {
-						let temp = Object.create(null);
-						temp.text = editor.buffer.getSelectedData();
-						switch(executedFrom) {
-							case "contextmenu":
-								navigator.clipboard.writeText(temp.text);
-								break;
-							case "shortcut":
-								editor.interface.input.value = temp.text;
-								setTimeout(() => {
-									editor.interface.input.value = "";
-								}, 0)
-								break;
+					createInstance(init) {
+						if(!!editor.buffer.instance[init.name]) {
+							throw new Error("Cannot create new instance: same name instance already exists");
+						} else {
+							editor.buffer.instance[init.name] = {
+
+							}
 						}
 					},
 
+					getInstance(init) {
+						
+					},
+
+					copy(executedFrom) {
+						editor.buffer.pasteToClipboard({
+							text: editor.buffer.getSelectedData({ type: "string", reduce: false }),
+							executedFrom: executedFrom
+						})
+					},
+
 					cut(executedFrom) {
-						this.copy(executedFrom);
-						editor.buffer.reduceSelectedData();
+						editor.buffer.pasteToClipboard({
+							text: editor.buffer.getSelectedData({ type: "string", reduce: true }),
+							executedFrom: executedFrom
+						})
+					},
+
+					open: async (readAs) => {
+
+						let temp = Object.create(null);
+
+						[editor.buffer.fileHandle] = await window.showOpenFilePicker(
+							{
+								types: [
+									{
+										description: "Text file",
+										accept: {
+											"text/*": [],
+											"application/*": []
+										},
+									}
+								],
+								excludeAcceptAllOption: true,
+								multiple: false
+							}
+						);
+						temp.result = new FileReader;
+						temp.result.readAsText(await editor.buffer.fileHandle.getFile(), "UTF-8");
+						temp.result.onload = event => {
+							editor.buffer.data = event.target.result
+						};
+
+					},
+
+					save: async () => {
+						let temp = Object.create(null);
+						if(!editor.buffer.fileHandle) editor.buffer.fileHandle = await window.showSaveFilePicker({
+							types: [
+								{
+									description: "Text file",
+									accept: {
+										"text/*": [],
+										"application/*": []
+									}
+								},
+							]
+						});
+						temp.writable = await editor.buffer.fileHandle.createWritable();
+						await temp.writable.write(editor.buffer.data);
+						await temp.writable.close();
 					},
 				}
 
 				window.onload = () => {
 
-					editor.buffer.data = "x".repeat(50000).split("");
+					editor.createInstance({
+						name: "html",
+					})
+
+					editor.buffer.data = "x".repeat(100000);
 
 					[
 						[() => {
 							document.getElementById('caret').setAttribute('blink', (editor.interface.caret.blink? "off" : "on"));
 							editor.interface.caret.blink = !editor.interface.caret.blink;
-						}, 600],
+						}, 600]
 
 					].forEach(set => setInterval(...set));
 
