@@ -467,8 +467,8 @@
 								case "get":
 									break;
 								case "set":
+									
 									for(let i = 0; i < init.from.length; i++) {
-										this.operationCaret = init.from[i];
 										for(let j = 0; j < init.data.length; j++) {
 											if(this.data[this.operationCaret] === null) {
 												this.data[this.operationCaret] = init.data[j];
