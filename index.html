@@ -350,8 +350,15 @@
 						data: [],
 
 						selection: [
-							[0, 6],
+							[100, 130],
+							[20, 40],
+							[5, 10]
 						],
+
+						selectedData: {
+							data: [],
+							opArea: [Infinity, 0]
+						},
 
 						caret: [
 							0
@@ -390,6 +397,22 @@
 							}
 						},
 
+						set(value) {
+							switch (typeof value) {
+								case "string":
+									this.data = value.split("");
+									break;
+								case "number":
+									this.data = String(value).split("");
+									break;
+								case "array":
+									this.data = value.join("").split("");
+									break;
+								default:
+									throw new Error("Failed to assign: value type is invalid")
+							}
+						},
+
 						open: async (readAs) => {
 
 							let temp = Object.create(null);
@@ -412,8 +435,8 @@
 							temp.result = new FileReader;
 							temp.result.readAsText(await this.fileHandle.getFile(), "UTF-8");
 							temp.result.onload = event => {
-								this.data = event.target.result.split("");
-								globalThis.editor.action.refresh();
+								editor.buffer.set(event.target.result);
+								// globalThis.editor.action.refresh();
 							}
 
 						},
@@ -453,16 +476,25 @@
 						redo() {},
 
 						copy(executedFrom) {
-							let text = "";
+							console.log("copy")
+							let temp = {
+								text: "",
+							}
 							for(const index of this.selection) {
-								text += (this.data.join("").substring(...index) + "\n")
+								if(index[0] < this.selectedData.opArea[0]) this.selectedData.opArea[0] = index[0];
+								if(index[1] > this.selectedData.opArea[1]) this.selectedData.opArea[1] = index[1];
+							}
+							temp.data = this.data.slice(...this.selectedData.opArea);
+							temp.selection = this.selection.map(index => index.map(selection => selection - this.selectedData.opArea[0]))
+							for(const index of temp.selection) {
+								temp.text += temp.data.slice(...index).join("") + "\n"
 							};
 							switch(executedFrom) {
 								case "contextmenu":
-									navigator.clipboard.writeText(text);
+									navigator.clipboard.writeText(temp.text);
 									break;
 								case "shortcut":
-									editor.interface.input.value = text;
+									editor.interface.input.value = temp.text;
 									setTimeout(() => {
 										editor.interface.input.value = "";
 									}, 0)
@@ -471,11 +503,12 @@
 						},
 
 						cut(executedFrom) {
-							this.copy(executedFrom);
-							this.selection.forEach(index => this.data.fill(0, index[0], index[1]));
-							this.data = this.data.filter(index => index !== 0);
+							this.copy(executedFrom)
+							this.data.splice
+							this.selection.forEach(index => this.data.fill(null, index[0], index[1]));
+							this.data = this.data.filter(index => index !== null);
 							this.selection = [];
-							console.log(this.data)
+							console.log(this.data.join(""))
 						},
 
 						paste: async () => {
@@ -771,6 +804,7 @@
 										case "Enter":
 											editor.buffer.pushHistory();
 											editor.interface.refresh(editor.buffer);
+											break;
 									};
 								};
 							}, { passive: false }
