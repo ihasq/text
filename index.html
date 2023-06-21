@@ -1,6 +1,6 @@
 <!--
 
-	Byter v0.0.1
+	Text v0.0.1
 
 	created and maintained by https://ihasq.com
 
@@ -333,13 +333,167 @@
 
 		<script type="text/javascript">
 
-			"use strict";
-
 			{
+				const ARAVE = {
+					Instance: class {
+						constructor(init) {
+							this.original = init.original;
+							this.piece = {
+								table: [
+									{
+										type: "original",
+										from: 0,
+										to: this.original.length								
+									}
+								],
+								index: 0,
+								max: init.max
+							};
+							this.file = {
+								handle: null
+							}
+							this.type = init.type;
+							this.add = "";
+							this.pos = 0;
+							this.selection = [];
+						}
 
-				window.editor = {
+						getText(init) {
+							let bufferText = "";
+							switch(true) {
+								case !init:
+									for(let i = 0; i < this.piece.index + 1; i++) {
+										bufferText += this[this.piece.table[i].type].slice(
+											this.piece.table[i].from,
+											this.piece.table[i].from + this.piece.table[i].to
+										)
+									};
+									break;
+							}
+							return bufferText;
+						}
+
+						getCaret() {}
+
+						acceptChunk(string) {
+							if(this.piece.length !== (this.pieceIndex + 1)) {
+								this.piece.fill(null, this.pieceIndex, this.piece.length);
+								this.piece.filter(Boolean);
+							};
+							this.piece.push({
+								type: "add",
+								from: this.add.length,
+								to: string.length
+							});
+							this.add += string;
+							if(this.maxPiece < this.piece.length) {}
+							this.pieceIndex++;
+						}
+
+						render(scrollTop, scrollLeft) {
+							return "this\n"
+						}
+
+						undo() {
+							if(1 < this.pieceIndex) this.pieceIndex--;
+						}
+
+						redo() {
+							if((this.pieceIndex - 2) < this.piece.length) this.pieceIndex++;
+						}
+
+						up() {}
+
+						down() {}
+
+						left() {}
+
+						right() {}
+					},
+
+					Surface: class {
+						constructor(init) {
+							this.target = document.querySelector(init.selector);
+						}
+					}
+				}
+
+				const editor = {
 
 					mode: "insertion",
+
+					instance: class {
+
+						constructor(init) {
+							this.original = init.original;
+							this.add = "";
+							this.pos = 0;
+							this.selection = null;
+							this.piece = [
+								{
+									type: "original",
+									from: 0,
+									to: this.original.length
+								},
+							];
+							this.pieceIndex = 1;
+							this.maxPiece = init.max;
+							this.queryChunk = [];
+						}
+
+						getLine(init) {
+							let bufferText = "";
+								if(!init) {
+									for(let i = 0; i < this.pieceIndex; i++) {
+										bufferText += this[this.piece[i].type].slice(
+											this.piece[i].from,
+											this.piece[i].from + this.piece[i].to
+										)
+									};
+								} else {
+
+								}
+							return bufferText;
+						}
+
+						getCaret() {}
+
+						acceptChunk(string) {
+							if(this.piece.length !== (this.pieceIndex + 1)) {
+								this.piece.fill(null, this.pieceIndex, this.piece.length);
+								this.piece.filter(Boolean);
+							};
+							this.piece.push({
+								type: "add",
+								from: this.add.length,
+								to: string.length
+							});
+							this.add += string;
+							if(this.maxPiece < this.piece.length) {}
+							this.pieceIndex++;
+						}
+
+						render(scrollTop, scrollLeft) {
+							return "this\n"
+						}
+
+						undo() {
+							if(1 < this.pieceIndex) this.pieceIndex--;
+						}
+
+						redo() {
+							if((this.pieceIndex - 2) < this.piece.length) this.pieceIndex++;
+						}
+
+						up() {}
+
+						down() {}
+
+						left() {}
+
+						right() {}
+
+					},
 
 					buffer: {
 
@@ -403,8 +557,6 @@
 							}
 						},
 
-						instance: Object.create(null),
-
 						set(value) {
 							switch (typeof value) {
 								case "string":
@@ -462,12 +614,11 @@
 						setSelection(from, to) {
 						},
 
+						instanceList: Object.create(null),
+
 						operate(init) {
 							switch(init.type) {
-								case "get":
-									break;
 								case "set":
-									
 									for(let i = 0; i < init.from.length; i++) {
 										for(let j = 0; j < init.data.length; j++) {
 											if(this.data[this.operationCaret] === null) {
@@ -495,13 +646,22 @@
 										}
 									}
 									break;
+								case "get":
+									break;
 								case "del":
+							}
+						},
+
+						operateWithPieceTable(init) {
+							switch(init.type) {
+								case "set":
+
+									break;
 							}
 						},
 
 						getSelectedData(init) {
 							if(!!this.selection.length) {
-								this.data = this.data.split("");
 								let temp = {
 									text: [],
 									data: [],
@@ -518,16 +678,16 @@
 									temp.text.push(temp.data.slice(index[0], index[1] + 1).join(""))
 								};
 								if(init.reduce === true) {
-									this.selection.forEach(index => {
-										for(let i = index[0]; i < index[1]; i++) this.data[i] = null
+									this.operate({
+										type: "del",
+										from: temp.selection
 									})
-								}
-								this.data = this.data.join("");
+								};
 								return ((init.type === "string")? temp.text.join("\n") : temp.text)
 							}
 						},
 
-						render() {
+						renderPipeline() {
 
 						},
 
@@ -546,12 +706,13 @@
 						},
 
 						dev() {
-							this.operate({
-								type: "set",
-								data: "abcde".repeat(10),
-								from: [0, 500, 200, 700, 400, 800]
-							});
-						}
+							
+						},
+
+						/* 
+							editor.instance.js1 = new editor.buffer.instance({original: "114514"})
+							editor.instance.js1.acceptChunk("editor");
+						*/
 					},
 
 					element: {
@@ -649,7 +810,7 @@
 									Operate: {
 										command: "Ctrl+F",
 										hint: "Copy selected string to clipboard",
-										action: "editor.buffer.dev()"
+										action: "test()"
 									},
 								},
 								{
@@ -773,10 +934,6 @@
 						}
 					},
 
-					getInstance(init) {
-
-					},
-
 					copy(executedFrom) {
 						editor.buffer.pasteToClipboard({
 							text: editor.buffer.getSelectedData({ type: "string", reduce: false }),
@@ -835,11 +992,20 @@
 						await temp.writable.write(editor.buffer.data);
 						await temp.writable.close();
 					},
-				}
+				};
 
 				window.onload = () => {
+					const index = new ARAVE.Instance({
+						original: "application",
+						max: 50,
+						type: "text/plain"
+					});
 
-					editor.buffer.data = "x".repeat(100000).split("");
+					window.test = () => {
+						index.acceptChunk("\napp".repeat(100));
+						console.log(index.pieceIndex);
+						console.log(index.getText())
+					};
 
 					[
 						[() => {
