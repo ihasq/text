@@ -336,39 +336,50 @@
 			"use strict";
 
 			{
+
+				fetch("./buffermachine/target/wasm32-unknown-unknown/release/buffermachine.wasm")
+				.then(response => response.arrayBuffer())
+				.then(bytes => WebAssembly.instantiate(bytes, {}))
+				.then(results => {console.log(results.instance.exports.add(1, 2))})
+
 				const ARAVE = {
 
 					// ARAVE.Instance : text buffer
 
 					Instance: class {
+
+						#buffer; // <- this is a private field
+
 						constructor(init) {
-							this.original = init.original;
-							this.add = "";
-							this.piece = {
-								table: [
-									{
+							Object.assign(this, {
+								type: init.type,
+								file: {
+									name: "", handle: null
+								},
+								pos: 0,
+								selection: []
+							});
+							this.#buffer = {
+								original: init.original,
+								add: "",
+								piece: {
+									table: [{
 										type: "original",
 										from: 0,
-										to: this.original.length								
-									}
-								],
-								index: 0,
-								max: init.max
-							};
-							this.file = {
-								handle: null
-							};
-							this.type = init.type;
-							this.pos = 0;
-							this.selection = [];
+										to: init.original.length
+									}],
+									index: 0,
+									max: init.max
+								}
+							}
 						}
 
 						getText(init) {
 							let bufferText = "";
-							for(let i = 0; i < this.piece.index + 1; i++) {
-								bufferText += this[this.piece.table[i].type].slice(
-									this.piece.table[i].from,
-									this.piece.table[i].from + this.piece.table[i].to
+							for(let i = 0; i < this.#buffer.piece.index + 1; i++) {
+								bufferText += this.#buffer[this.#buffer.piece.table[i].type].slice(
+									this.#buffer.piece.table[i].from,
+									this.#buffer.piece.table[i].from + this.#buffer.piece.table[i].to
 								)
 							};
 							return bufferText;
@@ -377,17 +388,17 @@
 						getCaret() {}
 
 						acceptChunk(string) {
-							if(this.piece.table.length !== (this.piece.index + 1)) {
-								this.piece.table.fill(null, this.piece.index, this.piece.length);
-								this.piece.table.filter(Boolean);
+							if(this.#buffer.piece.table.length !== (this.#buffer.piece.index + 1)) {
+								this.#buffer.piece.table.fill(null, this.#buffer.piece.index, this.#buffer.piece.length);
+								this.#buffer.piece.table.filter(Boolean);
 							};
-							this.piece.table.push({
+							this.#buffer.piece.table.push({
 								type: "add",
-								from: this.add.length,
+								from: this.#buffer.add.length,
 								to: string.length
 							});
-							this.add += string;
-							this.piece.index++;
+							this.#buffer.add += string;
+							this.#buffer.piece.index++;
 						}
 
 						render(scrollTop, scrollLeft) {
@@ -395,11 +406,11 @@
 						}
 
 						undo() {
-							if(1 < this.piece.index) this.piece.index--;
+							if(0 < this.#buffer.piece.index) this.#buffer.piece.index--;
 						}
 
 						redo() {
-							if((this.piece.index - 2) < this.piece.table.length) this.piece.index++;
+							if((this.#buffer.piece.index - 1) < this.#buffer.piece.table.length) this.#buffer.piece.index++;
 						}
 
 						up() {}
@@ -416,11 +427,85 @@
 					// ARAVE.Surface : HTML rendering process
 
 					Surface: class {
-						constructor(init) {
-							this.instance = init.instance
-						}
-					}
+						constructor(init) {Object.assign(this, {
+							instance: init.instance,
+							target: init.target
+						})}
+					},
 				};
+
+				const operation = [
+
+					{
+						Undo: {
+							command: "Ctrl+Z",
+							hint: "Undo operation",
+							action: "editor.buffer.undo()"
+						},
+						Redo: {
+							command: "Ctrl+Y",
+							hint: "Redo operation",
+							action: "editor.buffer.redo()"
+						},
+					},
+					{
+						Copy: {
+							command: "Ctrl+C",
+							hint: "Copy selected string to clipboard",
+							action: "editor.copy('contextmenu')"
+						},
+						Cut: {
+							command: "Ctrl+X",
+							hint: "Cut and paste selected string to clipboard",
+							action: "editor.cut('contextmenu')"
+						},
+						Paste: {
+							command: "Ctrl+V",
+							hint: "Paste string from clipboard",
+							action: "editor.buffer.paste()"
+						},
+					},
+					{
+						Save: {
+							command: "Ctrl+S",
+							hint: "Copy selected string to clipboard",
+							action: "editor.save()"
+						},
+						New: {
+							command: "Ctrl+N",
+							hint: "Cut and paste selected string to clipboard",
+							action: "editor.buffer.flush()"
+						},
+						Open: {
+							command: "Ctrl+O",
+							hint: "Paste string from clipboard",
+							action: "editor.open()"
+						},
+					},
+					{
+						Search: {
+							command: "Ctrl+F",
+							hint: "Copy selected string to clipboard",
+							action: "editor.save()"
+						},
+						Replace: {
+							command: "Ctrl+H",
+							hint: "Cut and paste selected string to clipboard",
+							action: "editor.buffer.flush()"
+						},
+					},
+					{
+						Operate: {
+							command: "Ctrl+F",
+							hint: "Copy selected string to clipboard",
+							action: "test()"
+						},
+					},
+					{
+						Settings: {},
+						"About Text app": {}
+					},
+				]
 
 				const surface = new ARAVE.Surface({
 					target: document.getElementById("#editor-1"),
@@ -429,79 +514,6 @@
 				const editor = {
 
 					mode: "insertion",
-
-					instance: class {
-
-						constructor(init) {
-							this.original = init.original;
-							this.add = "";
-							this.pos = 0;
-							this.selection = null;
-							this.piece = [
-								{
-									type: "original",
-									from: 0,
-									to: this.original.length
-								},
-							];
-							this.pieceIndex = 1;
-							this.maxPiece = init.max;
-							this.queryChunk = [];
-						}
-
-						getLine(init) {
-							let bufferText = "";
-								if(!init) {
-									for(let i = 0; i < this.pieceIndex; i++) {
-										bufferText += this[this.piece[i].type].slice(
-											this.piece[i].from,
-											this.piece[i].from + this.piece[i].to
-										)
-									};
-								} else {
-
-								}
-							return bufferText;
-						}
-
-						getCaret() {}
-
-						acceptChunk(string) {
-							if(this.piece.length !== (this.pieceIndex + 1)) {
-								this.piece.fill(null, this.pieceIndex, this.piece.length);
-								this.piece.filter(Boolean);
-							};
-							this.piece.push({
-								type: "add",
-								from: this.add.length,
-								to: string.length
-							});
-							this.add += string;
-							if(this.maxPiece < this.piece.length) {}
-							this.pieceIndex++;
-						}
-
-						render(scrollTop, scrollLeft) {
-							return "this\n"
-						}
-
-						undo() {
-							if(1 < this.pieceIndex) this.pieceIndex--;
-						}
-
-						redo() {
-							if((this.pieceIndex - 2) < this.piece.length) this.pieceIndex++;
-						}
-
-						up() {}
-
-						down() {}
-
-						left() {}
-
-						right() {}
-
-					},
 
 					buffer: {
 
@@ -896,17 +908,11 @@
 							// render and place html from configuration
 							this.ctx.innerHTML = (() => {
 								let html = "";
-								for(const group of editor.interface.contextmenu.operation) html += `
-									<div class=\"contextmenu group\">${(() => {
-										let component = "";
-										for(const index in group) component += `
-											<div class="grid contextmenu index" title="${group[index].hint}" onclick="${group[index].action}">
-												<span class="contextmenu">${index}</span><span class="contextmenu">${((!!group[index].command)? group[index].command : "")}</span>
-											</div>
-										`;
-										return component;
-									})()}</div>
-								`;
+								for(const group of editor.interface.contextmenu.operation) html += `<div class=\"contextmenu group\">${(() => {
+									let component = "";
+									for(const index in group) component += `<div class="grid contextmenu index" title="${group[index].hint}" onclick="${group[index].action}"><span class="contextmenu">${index}</span><span class="contextmenu">${((!!group[index].command)? group[index].command : "")}</span></div>`;
+									return component;
+								})()}</div>`;
 								return html.replace(/\t|\n/g, "");
 							})();
 							this.ctx.setAttribute("state", "active");
@@ -1007,13 +1013,13 @@
 						original: "application",
 						type: "text/plain",
 						max: 50,
-						
 					});
 
 					window.test = () => {
 						index.acceptChunk("\napp".repeat(100));
-						console.log(index.piece);
-						console.log(index.getText())
+						console.log(index.getText());
+						index.undo();
+						console.log(index.getText());
 					};
 
 					[
@@ -1132,7 +1138,6 @@
 
 				}
 			}
-
 		</script>
 
 	</body>
