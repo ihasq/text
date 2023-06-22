@@ -333,11 +333,17 @@
 
 		<script type="text/javascript">
 
+			"use strict";
+
 			{
 				const ARAVE = {
+
+					// ARAVE.Instance : text buffer
+
 					Instance: class {
 						constructor(init) {
 							this.original = init.original;
+							this.add = "";
 							this.piece = {
 								table: [
 									{
@@ -351,43 +357,37 @@
 							};
 							this.file = {
 								handle: null
-							}
+							};
 							this.type = init.type;
-							this.add = "";
 							this.pos = 0;
 							this.selection = [];
 						}
 
 						getText(init) {
 							let bufferText = "";
-							switch(true) {
-								case !init:
-									for(let i = 0; i < this.piece.index + 1; i++) {
-										bufferText += this[this.piece.table[i].type].slice(
-											this.piece.table[i].from,
-											this.piece.table[i].from + this.piece.table[i].to
-										)
-									};
-									break;
-							}
+							for(let i = 0; i < this.piece.index + 1; i++) {
+								bufferText += this[this.piece.table[i].type].slice(
+									this.piece.table[i].from,
+									this.piece.table[i].from + this.piece.table[i].to
+								)
+							};
 							return bufferText;
 						}
 
 						getCaret() {}
 
 						acceptChunk(string) {
-							if(this.piece.length !== (this.pieceIndex + 1)) {
-								this.piece.fill(null, this.pieceIndex, this.piece.length);
-								this.piece.filter(Boolean);
+							if(this.piece.table.length !== (this.piece.index + 1)) {
+								this.piece.table.fill(null, this.piece.index, this.piece.length);
+								this.piece.table.filter(Boolean);
 							};
-							this.piece.push({
+							this.piece.table.push({
 								type: "add",
 								from: this.add.length,
 								to: string.length
 							});
 							this.add += string;
-							if(this.maxPiece < this.piece.length) {}
-							this.pieceIndex++;
+							this.piece.index++;
 						}
 
 						render(scrollTop, scrollLeft) {
@@ -395,11 +395,11 @@
 						}
 
 						undo() {
-							if(1 < this.pieceIndex) this.pieceIndex--;
+							if(1 < this.piece.index) this.piece.index--;
 						}
 
 						redo() {
-							if((this.pieceIndex - 2) < this.piece.length) this.pieceIndex++;
+							if((this.piece.index - 2) < this.piece.table.length) this.piece.index++;
 						}
 
 						up() {}
@@ -409,14 +409,22 @@
 						left() {}
 
 						right() {}
+
+						get availableMimeType() {}
 					},
+
+					// ARAVE.Surface : HTML rendering process
 
 					Surface: class {
 						constructor(init) {
-							this.target = document.querySelector(init.selector);
+							this.instance = init.instance
 						}
 					}
-				}
+				};
+
+				const surface = new ARAVE.Surface({
+					target: document.getElementById("#editor-1"),
+				})
 
 				const editor = {
 
@@ -997,13 +1005,14 @@
 				window.onload = () => {
 					const index = new ARAVE.Instance({
 						original: "application",
+						type: "text/plain",
 						max: 50,
-						type: "text/plain"
+						
 					});
 
 					window.test = () => {
 						index.acceptChunk("\napp".repeat(100));
-						console.log(index.pieceIndex);
+						console.log(index.piece);
 						console.log(index.getText())
 					};
 
@@ -1026,7 +1035,6 @@
 						[
 							"wheel", event => {
 								event.preventDefault();
-								editor.interface.scrollProc(event);
 							}, { passive: false }
 						],
 
