@@ -343,46 +343,68 @@
 
 					Instance: class {
 
-						#buffer; // <- this is a private field
+						#buffer; // private
 
 						constructor(init) {
 							Object.assign(this, {
 								type: init.type,
-								file: {
-									name: "", handle: null
-								},
 								pos: 0,
+								line: 0,
+								col: 0,
 								selection: []
 							});
 							this.#buffer = {
 								original: init.original,
 								add: "",
 								piece: {
-									table: [{
-										type: "original",
-										from: 0,
-										to: init.original.length
-									}],
+									table: [
+										{ type: "original", from: 0, to: init.original.length },
+									],
+									history: [
+										{ action: "push", to}
+									],
 									index: 0,
-									max: init.max
-								}
-							}
+									max: init.max,
+								},
+								heap: {},
+								file: {
+									name: "",
+									handle: null
+								},
+							};
 						}
 
-						getText(init) {
-							let bufferText = "";
-							for(let i = 0; i < this.#buffer.piece.index + 1; i++) {
-								bufferText += this.#buffer[this.#buffer.piece.table[i].type].slice(
-									this.#buffer.piece.table[i].from,
-									this.#buffer.piece.table[i].from + this.#buffer.piece.table[i].to
-								)
+						text(init) {
+							this.#buffer.heap = {
+								text: "",
+								range: []
 							};
-							return bufferText;
+							if(init.stream) {
+								new ReadableStream({
+									start: ""
+								})
+								return
+
+							} else {
+								if(!init.range || init.range.length <= 1) {
+									for(let i = 0; i < this.#buffer.piece.index + 1; i++) {
+										this.#buffer.heap.text += this.#buffer[this.#buffer.piece.table[i].type].slice(
+											this.#buffer.piece.table[i].from,
+											this.#buffer.piece.table[i].from + this.#buffer.piece.table[i].to
+										)
+									};
+								} else {
+								}
+								return this.#buffer.heap.text;
+							};
+						}
+
+						slice(indexStart, indexEnd) {
 						}
 
 						getCaret() {}
 
-						acceptChunk(string) {
+						push(string) {
 							if(this.#buffer.piece.table.length !== (this.#buffer.piece.index + 1)) {
 								this.#buffer.piece.table.fill(null, this.#buffer.piece.index, this.#buffer.piece.length);
 								this.#buffer.piece.table.filter(Boolean);
@@ -412,9 +434,13 @@
 
 						down() {}
 
-						left() {}
+						left(step) {
+							this.pos -= step;
+						}
 
-						right() {}
+						right(step) {
+							this.pos += step;
+						}
 
 						get availableMimeType() {}
 					},
@@ -428,6 +454,16 @@
 						})}
 					},
 				};
+
+				const a = new ARAVE.Instance({
+					original: "Lorem ipsum",
+					type: "text/plain",
+					max: 20,
+				});
+				a.text({
+					stream: true,
+					range: null
+				})
 
 				const operation = [
 
@@ -1011,10 +1047,10 @@
 					});
 
 					window.test = () => {
-						index.acceptChunk("\napp".repeat(100));
-						console.log(index.getText());
+						index.push("\napp".repeat(100));
+						console.log(index.text());
 						index.undo();
-						console.log(index.getText());
+						console.log(index.text());
 					};
 
 					[
