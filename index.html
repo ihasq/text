@@ -1,6 +1,16 @@
 <!--
 
-	Text v0.0.1
+         `9À
+         ,M#,
+         dfV$.   ,.    _      __   ____   ____   __
+        ,# `WÀ    ^YB,r^9b ,jP""^b,`VM(   `Y&' dÁ""&b
+        ŷ'  V&.    W#   `` $6    )b `$b    d' 6f    Yb
+       ,#   `MÀ    $N      ``   ,$&  Y&.  ,Y !N;    ;&
+       j&    ß&.   B%      ,nd&f"M#   %A  M  :$Nuc+>9"
+      ,&GnuxĆ%RÀ   RS      Af``  1K   `Mbf'  `W. ``   ;
+      d'``````VW.  &8      $l    #(    Y$Y    Vl    ,f
+    _J7_     _)NM_JMK_,     `9Mumf'b_.  V      "Vbd7^
+    `````    `````````        ``        `        ``
 
 	created and maintained by https://ihasq.com
 
@@ -21,6 +31,7 @@
 		<style>
 
 			* {
+				transform: translateZ(0);
 				box-sizing: border-box;
 			}
 
@@ -78,7 +89,7 @@
 				color: var(--editor-line-color-inactive);
 				background-color: var(--editor-line-background-color);
 
-				border-right: 1px solid #363636;
+				border-right: 1px solid var(--editor-divider-color);
 
 				margin: 0px;
 				padding: 6px 3px;
@@ -144,13 +155,13 @@
 			}
 
 			#footer {
-				background-color: #212224;
+				background-color: #212124;
 				color: var(--editor-footer-color);
 
 				font-family: var(--editor-font-family);
 				font-size: calc(var(--editor-font-size) * 0.9);
 
-				border-top: 1px solid #363636;
+				border-top: 1px solid var(--editor-divider-color);
 
 				width: 100%;
 				grid-template-columns: 200px auto 400px;
@@ -182,8 +193,8 @@
 			#contextmenu {
 				width: 220px;
 				height: max-content;
-				background-color: #242429;
-				outline: 1px solid #555;
+				background-color: #212124;
+				outline: 1px solid var(--editor-divider-color);
 				border-radius: 3px;
 				overflow: hidden;
 			}
@@ -197,7 +208,7 @@
 			}
 
 			#contextmenu > div.group {
-				border-bottom: 1px solid #555;
+				border-bottom: 1px solid var(--editor-divider-color);
 			}
 
 			#contextmenu > div.group:last-child {
@@ -209,7 +220,7 @@
 				font-size: 13px;
 				font-family: var(--editor-font-family);
 				color: #bbb;
-				padding: 5px 18px;
+				padding: 4px 18px;
 				background-color: transparent;
 			}
 
@@ -224,12 +235,16 @@
 			}
 
 			#contextmenu > div.group > div.index:hover:not(.disabled) {
-				background-color: #363636;
+				background-color: #444447;
 				color: #fff;
 			}
 
+			#contextmenu > div.group > div.index:hover:not(.disabled) > span:last-child {
+				color: #ddd;
+			}
+
 			#contextmenu > div.group > div.index:first-child {
-				padding-top: 7px;
+				padding-top: 5px;
 			}
 
 			#message {
@@ -286,10 +301,12 @@
 
 				--editor-footer-color:				#dde;
 
-				--editor-color:						#fff;
-				--editor-background-color:			#222326;
+				--editor-divider-color:				#424246;
 
-				--editor-line-background-color:		#27282a;
+				--editor-color:						#fff;
+				--editor-background-color:			#212123;
+
+				--editor-line-background-color:		#212123;
 				--editor-line-color:				#fff;
 				--editor-line-color-inactive:		#aab;
 
@@ -343,77 +360,104 @@
 
 					Instance: class {
 
-						#buffer; // private
+						#buffer;
 
 						constructor(init) {
-							Object.assign(this, {
-								type: init.type,
-								pos: 0,
-								line: 0,
-								col: 0,
-								selection: []
-							});
+
 							this.#buffer = {
-								original: init.original,
+								original: "",
 								add: "",
-								piece: {
-									table: [
-										{ type: "original", from: 0, to: init.original.length },
+								slot: "",
+								table: [],
+								map: [],
+								history: {
+									timeline: [
+										/*
+										[
+											{ action: "insert", with: "original", from: 0, to: 11 },
+											{ action: "movepos", by: 11 }
+										],
+										[
+											{ action: "movepos", by -11 }
+											{ action: "split", by: 4 },
+											{ action: "insert", with: "slot", from: 0, to: 5 },
+										],
+										...
+										*/
 									],
-									history: [
-										{ action: "push", to}
-									],
-									index: 0,
-									max: init.max,
+									index: -1,
+									max: -1,
+								},
+								refactor() {},
+								attribute() {
+									for(let i = 0; i < this.history.timeline[this.history.index].length; i++) {
+									}
+									this.history.index++;
 								},
 								heap: {},
-								file: {
-									name: "",
-									handle: null
-								},
+								file: { name: "", handle: null },
+								type: init.type,
+								selection: [],
+								pos: 0,
+								length: 0,
+								ln: 0,
+								col: 0,
+							}
+
+							if(!!init.original && typeof init.original === "string" && init.original.length !== 0) {
+								this.#buffer.original = init.original;
+								this.#buffer.history.timeline.push([
+									{
+										action: "insert",
+										with: "original",
+										from: 0,
+										to: init.original.length
+									},
+									{
+										action: "movepos",
+										by: init.original.length
+									}
+								]);
+								this.#buffer.history.index++;
+								this.#buffer.attribute();
 							};
 						}
 
-						text(init) {
+						get selection() {
+							return this.#buffer.selection;
+						}
+
+						get text() {
 							this.#buffer.heap = {
 								text: "",
 								range: []
 							};
-							if(init.stream) {
-								new ReadableStream({
-									start: ""
-								})
-								return
-
-							} else {
-								if(!init.range || init.range.length <= 1) {
-									for(let i = 0; i < this.#buffer.piece.index + 1; i++) {
-										this.#buffer.heap.text += this.#buffer[this.#buffer.piece.table[i].type].slice(
-											this.#buffer.piece.table[i].from,
-											this.#buffer.piece.table[i].from + this.#buffer.piece.table[i].to
-										)
-									};
-								} else {
-								}
-								return this.#buffer.heap.text;
+							for(let i = 0; i < this.#buffer.index + 1; i++) {
+								this.#buffer.heap.text += this.#buffer[this.#buffer.table[i].type].slice(
+									this.#buffer.table[i].from,
+									this.#buffer.table[i].from + this.#buffer.table[i].to
+								)
 							};
+							return this.#buffer.heap.text;
 						}
 
-						slice(indexStart, indexEnd) {
+						operate(init) {
+
 						}
+
+						line() {}
+
+						slice(indexStart, indexEnd) {}
 
 						getCaret() {}
 
-						push(string) {
-							if(this.#buffer.piece.table.length !== (this.#buffer.piece.index + 1)) {
-								this.#buffer.piece.table.fill(null, this.#buffer.piece.index, this.#buffer.piece.length);
-								this.#buffer.piece.table.filter(Boolean);
-							};
+						insert(string) {
 							this.#buffer.piece.table.push({
-								type: "add",
+								type: "hot",
 								from: this.#buffer.add.length,
 								to: string.length
 							});
+							this.pos += string.length;
 							this.#buffer.add += string;
 							this.#buffer.piece.index++;
 						}
@@ -445,101 +489,127 @@
 						get availableMimeType() {}
 					},
 
-					// ARAVE.Surface : HTML rendering process
+					// ARAVE.Surface : HTML process
 
 					Surface: class {
-						constructor(init) {Object.assign(this, {
-							instance: init.instance,
-							target: init.target
-						})}
+
+						#buffer; // private
+
+						constructor(init) {
+							Object.assign(this, {
+								instance: init.instance,
+							});
+							this.#buffer = {
+								target: init.target,
+								interface: {
+									caret: {
+										blink: {
+											state: true,
+											process: setInterval(()=>{
+												this.#buffer.target.innerHTML.getElementById("caret").setAttribute('blink', (this.#buffer.interface.caret.blink? "off" : "on"));
+												this.#buffer.interface.caret.blink = !this.#buffer.interface.caret.blink;
+											}, 600)
+										}
+									}
+								}
+							}
+						}
+
+						copy() {}
+
+						cut() {}
+
+						paste() {}
+					},
+
+					// ARAVE.Editor : interface manager (e.g. tabs, taskbar)
+
+					Editor: class {
+
+						#buffer;
+
+						constructor(init) {
+							init.contextmenu.forEach(index => {
+								for(const group in index) {
+
+								}
+							})
+						}
 					},
 				};
 
-				const a = new ARAVE.Instance({
-					original: "Lorem ipsum",
-					type: "text/plain",
-					max: 20,
-				});
-				a.text({
-					stream: true,
-					range: null
-				})
-
-				const operation = [
-
-					{
-						Undo: {
-							command: "Ctrl+Z",
-							hint: "Undo operation",
-							action: "editor.buffer.undo()"
+				const main = new ARAVE.Editor({
+					contextmenu: [
+						{
+							Undo: {
+								command: "Ctrl+Z",
+								hint: "Undo operation",
+								action: "editor.buffer.undo()"
+							},
+							Redo: {
+								command: "Ctrl+Y",
+								hint: "Redo operation",
+								action: "editor.buffer.redo()"
+							},
 						},
-						Redo: {
-							command: "Ctrl+Y",
-							hint: "Redo operation",
-							action: "editor.buffer.redo()"
+						{
+							Copy: {
+								command: "Ctrl+C",
+								hint: "Copy selected string to clipboard",
+								action: "editor.copy('contextmenu')"
+							},
+							Cut: {
+								command: "Ctrl+X",
+								hint: "Cut and paste selected string to clipboard",
+								action: "editor.cut('contextmenu')"
+							},
+							Paste: {
+								command: "Ctrl+V",
+								hint: "Paste string from clipboard",
+								action: "editor.buffer.paste()"
+							},
 						},
-					},
-					{
-						Copy: {
-							command: "Ctrl+C",
-							hint: "Copy selected string to clipboard",
-							action: "editor.copy('contextmenu')"
+						{
+							Save: {
+								command: "Ctrl+S",
+								hint: "Copy selected string to clipboard",
+								action: "editor.save()"
+							},
+							New: {
+								command: "Ctrl+N",
+								hint: "Cut and paste selected string to clipboard",
+								action: "editor.buffer.flush()"
+							},
+							Open: {
+								command: "Ctrl+O",
+								hint: "Paste string from clipboard",
+								action: "editor.open()"
+							},
 						},
-						Cut: {
-							command: "Ctrl+X",
-							hint: "Cut and paste selected string to clipboard",
-							action: "editor.cut('contextmenu')"
+						{
+							Search: {
+								command: "Ctrl+F",
+								hint: "Copy selected string to clipboard",
+								action: "editor.save()"
+							},
+							Replace: {
+								command: "Ctrl+H",
+								hint: "Cut and paste selected string to clipboard",
+								action: "editor.buffer.flush()"
+							},
 						},
-						Paste: {
-							command: "Ctrl+V",
-							hint: "Paste string from clipboard",
-							action: "editor.buffer.paste()"
+						{
+							Operate: {
+								command: "Ctrl+F",
+								hint: "Copy selected string to clipboard",
+								action: "test()"
+							},
 						},
-					},
-					{
-						Save: {
-							command: "Ctrl+S",
-							hint: "Copy selected string to clipboard",
-							action: "editor.save()"
+						{
+							Settings: {},
+							"About Text app": {}
 						},
-						New: {
-							command: "Ctrl+N",
-							hint: "Cut and paste selected string to clipboard",
-							action: "editor.buffer.flush()"
-						},
-						Open: {
-							command: "Ctrl+O",
-							hint: "Paste string from clipboard",
-							action: "editor.open()"
-						},
-					},
-					{
-						Search: {
-							command: "Ctrl+F",
-							hint: "Copy selected string to clipboard",
-							action: "editor.save()"
-						},
-						Replace: {
-							command: "Ctrl+H",
-							hint: "Cut and paste selected string to clipboard",
-							action: "editor.buffer.flush()"
-						},
-					},
-					{
-						Operate: {
-							command: "Ctrl+F",
-							hint: "Copy selected string to clipboard",
-							action: "test()"
-						},
-					},
-					{
-						Settings: {},
-						"About Text app": {}
-					},
-				]
-
-				const surface = new ARAVE.Surface({
-					target: document.getElementById("#editor-1"),
+					]
 				})
 
 				const editor = {
@@ -1048,9 +1118,9 @@
 
 					window.test = () => {
 						index.push("\napp".repeat(100));
-						console.log(index.text());
+						console.log(index.text);
 						index.undo();
-						console.log(index.text());
+						console.log(index.text);
 					};
 
 					[
