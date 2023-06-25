@@ -31,7 +31,6 @@
 		<style>
 
 			* {
-				transform: translateZ(0);
 				box-sizing: border-box;
 			}
 
@@ -152,16 +151,16 @@
 				user-select: none;
 				border: none;
 				padding: 0px;
+				display: inline-block;
+				transform: 0;
 			}
 
 			#footer {
-				background-color: #212124;
+				background-color: #d64609;
 				color: var(--editor-footer-color);
 
 				font-family: var(--editor-font-family);
-				font-size: calc(var(--editor-font-size) * 0.9);
-
-				border-top: 1px solid var(--editor-divider-color);
+				font-size: var(--editor-font-size);
 
 				width: 100%;
 				grid-template-columns: 200px auto 400px;
@@ -193,7 +192,7 @@
 			#contextmenu {
 				width: 220px;
 				height: max-content;
-				background-color: #212124;
+				background-color: #f0f0f0;
 				outline: 1px solid var(--editor-divider-color);
 				border-radius: 3px;
 				overflow: hidden;
@@ -219,8 +218,8 @@
 				grid-template-columns: auto 60px;
 				font-size: 13px;
 				font-family: var(--editor-font-family);
-				color: #bbb;
-				padding: 4px 18px;
+				color: #111;
+				padding: 5px 18px;
 				background-color: transparent;
 			}
 
@@ -229,13 +228,15 @@
 			}
 
 			#contextmenu > div.group > div.index > span:last-child {
-				color: #999;
+				color: #33333d;
 				text-align: end;
+				height: max-content;
+				padding: 2px 0;
 				font-size: calc(var(--editor-font-size) * 0.8);
 			}
 
 			#contextmenu > div.group > div.index:hover:not(.disabled) {
-				background-color: #444447;
+				background-color: #d64609;
 				color: #fff;
 			}
 
@@ -244,15 +245,19 @@
 			}
 
 			#contextmenu > div.group > div.index:first-child {
-				padding-top: 5px;
+				padding-top: 7px;
+			}
+
+			#contextmenu > div.group > div.index:last-child {
+				padding-bottom: 7px;
 			}
 
 			#message {
 				height: max-content;
 				width: max-content;
 				inset: calc(100% - 48px) 16px 0 auto;
-				background-color: #222;
-				outline: 1px solid #555;
+				background-color: #202023;
+				outline: 1px solid #555558;
 				color: #fff;
 				font-family: "Consolas", 'Courier New', "Courier", "Monaco", "monospace";
 				font-size: calc(var(--editor-font-size) * 0.9);
@@ -295,22 +300,22 @@
 
 			* {
 				--editor-font-family:				"Consolas", 'Courier New', "Courier", "Monaco", "monospace";
-				--editor-font-size:					14px;
+				--editor-font-size:					13px;
 				--editor-tab-size:					4;
 				--editor-line-height: 				16px;
 
 				--editor-footer-color:				#dde;
 
-				--editor-divider-color:				#424246;
+				--editor-divider-color:				#aaaab3;
 
-				--editor-color:						#fff;
-				--editor-background-color:			#212123;
+				--editor-color:						#000;
+				--editor-background-color:			#fff;
 
-				--editor-line-background-color:		#212123;
+				--editor-line-background-color:		#f0f0f0;
 				--editor-line-color:				#fff;
 				--editor-line-color-inactive:		#aab;
 
-				--editor-caret-style:				1px solid #fff;
+				--editor-caret-style:				1px solid #000;
 
 				--editor-focus-outline:				none;
 
@@ -324,13 +329,13 @@
 
 		<div id="wrapper">
 
-			<textarea id="input" wrap="off"></textarea>
+			<textarea id="input" wrap="off" rows="0"></textarea>
 
 			<div class="grid" id="editorGrid">
 
 				<pre id="editorLine"></pre>
 
-				<pre id="editorSurface"><span id="caret" blink="on"></span></pre>
+				<pre id="editorSurface">Arave<span id="caret" blink="on"></span></pre>
 
 			</div>
 
@@ -347,7 +352,6 @@
 			<div></div>
 			<div class="right"><span>tab: 4</span><span>HTML</span></div>
 		</div>
-
 		<script type="text/javascript">
 
 			"use strict";
@@ -356,15 +360,15 @@
 
 				const ARAVE = {
 
-					// ARAVE.Instance : text buffer
+					// ARAVE.Buffer : text buffer
 
-					Instance: class {
+					Buffer: class {
 
-						#buffer;
+						#struct;
 
 						constructor(init) {
 
-							this.#buffer = {
+							this.#struct = {
 								original: "",
 								add: "",
 								slot: "",
@@ -395,7 +399,6 @@
 									this.history.index++;
 								},
 								heap: {},
-								file: { name: "", handle: null },
 								type: init.type,
 								selection: [],
 								pos: 0,
@@ -405,8 +408,8 @@
 							}
 
 							if(!!init.original && typeof init.original === "string" && init.original.length !== 0) {
-								this.#buffer.original = init.original;
-								this.#buffer.history.timeline.push([
+								this.#struct.original = init.original;
+								this.#struct.history.timeline.push([
 									{
 										action: "insert",
 										with: "original",
@@ -418,27 +421,27 @@
 										by: init.original.length
 									}
 								]);
-								this.#buffer.history.index++;
-								this.#buffer.attribute();
+								this.#struct.history.index++;
+								this.#struct.attribute();
 							};
 						}
 
 						get selection() {
-							return this.#buffer.selection;
+							return this.#struct.selection;
 						}
 
 						get text() {
-							this.#buffer.heap = {
+							this.#struct.heap = {
 								text: "",
 								range: []
 							};
-							for(let i = 0; i < this.#buffer.index + 1; i++) {
-								this.#buffer.heap.text += this.#buffer[this.#buffer.table[i].type].slice(
-									this.#buffer.table[i].from,
-									this.#buffer.table[i].from + this.#buffer.table[i].to
+							for(let i = 0; i < this.#struct.index + 1; i++) {
+								this.#struct.heap.text += this.#struct[this.#struct.table[i].type].slice(
+									this.#struct.table[i].from,
+									this.#struct.table[i].from + this.#struct.table[i].to
 								)
 							};
-							return this.#buffer.heap.text;
+							return this.#struct.heap.text;
 						}
 
 						operate(init) {
@@ -452,14 +455,14 @@
 						getCaret() {}
 
 						insert(string) {
-							this.#buffer.piece.table.push({
+							this.#struct.piece.table.push({
 								type: "hot",
-								from: this.#buffer.add.length,
+								from: this.#struct.add.length,
 								to: string.length
 							});
 							this.pos += string.length;
-							this.#buffer.add += string;
-							this.#buffer.piece.index++;
+							this.#struct.add += string;
+							this.#struct.piece.index++;
 						}
 
 						render(scrollTop, scrollLeft) {
@@ -467,11 +470,11 @@
 						}
 
 						undo() {
-							if(0 < this.#buffer.piece.index) this.#buffer.piece.index--;
+							if(0 < this.#struct.piece.index) this.#struct.piece.index--;
 						}
 
 						redo() {
-							if((this.#buffer.piece.index - 1) < this.#buffer.piece.table.length) this.#buffer.piece.index++;
+							if((this.#struct.piece.index - 1) < this.#struct.piece.table.length) this.#struct.piece.index++;
 						}
 
 						up() {}
@@ -493,21 +496,21 @@
 
 					Surface: class {
 
-						#buffer; // private
+						#struct; // private
 
 						constructor(init) {
 							Object.assign(this, {
 								instance: init.instance,
 							});
-							this.#buffer = {
+							this.#struct = {
 								target: init.target,
 								interface: {
 									caret: {
 										blink: {
 											state: true,
 											process: setInterval(()=>{
-												this.#buffer.target.innerHTML.getElementById("caret").setAttribute('blink', (this.#buffer.interface.caret.blink? "off" : "on"));
-												this.#buffer.interface.caret.blink = !this.#buffer.interface.caret.blink;
+												document.getElementById("caret").setAttribute('blink', (this.#struct.interface.caret.blink? "off" : "on"));
+												this.#struct.interface.caret.blink = !this.#struct.interface.caret.blink;
 											}, 600)
 										}
 									}
@@ -521,24 +524,9 @@
 
 						paste() {}
 					},
-
-					// ARAVE.Editor : interface manager (e.g. tabs, taskbar)
-
-					Editor: class {
-
-						#buffer;
-
-						constructor(init) {
-							init.contextmenu.forEach(index => {
-								for(const group in index) {
-
-								}
-							})
-						}
-					},
 				};
 
-				const main = new ARAVE.Editor({
+				const main = new ARAVE.Surface({
 					contextmenu: [
 						{
 							Undo: {
@@ -616,100 +604,6 @@
 
 					mode: "insertion",
 
-					buffer: {
-
-						keyProperty: {
-							shift: false
-						},
-						
-						input: document.getElementById("input"),
-
-						data: [],
-
-						selection: [
-							[100, 130],
-							[20, 40],
-							[5, 10]
-						],
-
-						selectedData: {
-							data: [],
-							opArea: [Infinity, 0]
-						},
-
-						caret: [
-							0
-						],
-
-						operationCaret: 0,
-
-						gap: undefined,
-
-						clipboardData: "",
-
-						fileName: "",
-
-						fileHandle: null,
-
-						currentControlQueue: [],
-
-						history: {
-
-							queue: {
-
-							},
-
-							stack: [
-
-								{
-									type: "insertion",
-									from: 0,
-									content: "abc"
-								},
-
-								{
-									type: ""
-								}
-							],
-
-							pushQueue() {
-								this.stack.push(this.queue);
-								this.queue = Object.create(null);
-							}
-						},
-
-						set(value) {
-							switch (typeof value) {
-								case "string":
-									this.data = value;
-									break;
-								case "number":
-									this.data = String(value);
-									break;
-								case "array":
-									this.data = value.join("");
-									break;
-								default:
-									throw new Error("Failed to assign: value type is invalid")
-							}
-						},
-
-						flush() {
-
-							this.file = {
-								name: "",
-								handle: null
-							}
-
-							this.input.value = "";
-
-							globalThis.editor.interface.refresh();
-						},
-
-						undo() {},
-
-						redo() {},
-
 						paste: async () => {
 							await navigator.permissions.query({ name: "clipboard-read" }).then(res => {
 								switch(res.state) {
@@ -726,115 +620,6 @@
 								}
 							})
 						},
-
-						pushHistory(init) {
-							this.history.pushQueue();
-							this.input.value = "";
-						},
-
-						setSelection(from, to) {
-						},
-
-						instanceList: Object.create(null),
-
-						operate(init) {
-							switch(init.type) {
-								case "set":
-									for(let i = 0; i < init.from.length; i++) {
-										for(let j = 0; j < init.data.length; j++) {
-											if(this.data[this.operationCaret] === null) {
-												this.data[this.operationCaret] = init.data[j];
-												this.operationCaret++;
-												this.gap[0]++;
-												if(this.gap[0] === this.gap[1]) this.gap = undefined;
-											} else if(this.data[this.operationCaret - 1] === null) {
-												this.data[this.operationCaret - 1] = init.data[j];
-												this.gap[1]--;
-												if(this.gap[0] === this.gap[1]) this.gap = undefined;
-											} else {
-												if(this.gap === undefined) {
-													this.data.splice(this.operationCaret, 0, init.data[j], null, null, null, null, null, null, null);
-													this.operationCaret++;
-													this.gap = [this.operationCaret, this.operationCaret + 7];
-												} else {
-													let caretBuffer = this.operationCaret - this.gap[1];
-													this.data.splice(this.gap[0], this.operationCaret, ...this.data.slice(this.gap[1], this.operationCaret), ...this.data.slice(this.gap[0], this.gap[1]));
-													for(let i = 0; i < 2; i++) this.gap[i] += caretBuffer;
-													this.data[this.operationCaret - 1] = init.data[j];
-													this.gap[1]--;
-												}
-											};
-										}
-									}
-									break;
-								case "get":
-									break;
-								case "del":
-							}
-						},
-
-						operateWithPieceTable(init) {
-							switch(init.type) {
-								case "set":
-
-									break;
-							}
-						},
-
-						getSelectedData(init) {
-							if(!!this.selection.length) {
-								let temp = {
-									text: [],
-									data: [],
-									selection: [],
-									selectedArea: [Infinity, 0],
-								}
-								for(const index of this.selection) {
-									if(index[0] < temp.selectedArea[0]) temp.selectedArea[0] = index[0];
-									if(index[1] > temp.selectedArea[1]) temp.selectedArea[1] = index[1];
-								}
-								temp.data = this.data.slice(temp.selectedArea[0], temp.selectedArea[1] + 1);
-								temp.selection = this.selection.map(index => index.map(selection => selection - temp.selectedArea[0]))
-								for(const index of temp.selection) {
-									temp.text.push(temp.data.slice(index[0], index[1] + 1).join(""))
-								};
-								if(init.reduce === true) {
-									this.operate({
-										type: "del",
-										from: temp.selection
-									})
-								};
-								return ((init.type === "string")? temp.text.join("\n") : temp.text)
-							}
-						},
-
-						renderPipeline() {
-
-						},
-
-						pasteToClipboard(init) {
-							switch(init.executedFrom) {
-								case "contextmenu":
-									navigator.clipboard.writeText(init.text);
-									break;
-								case "shortcut":
-									editor.interface.input.value = init.text;
-									setTimeout(() => {
-										editor.interface.input.value = "";
-									}, 0)
-									break;
-							}
-						},
-
-						dev() {
-							
-						},
-
-						/* 
-							editor.instance.js1 = new editor.buffer.instance({original: "114514"})
-							editor.instance.js1.acceptChunk("editor");
-						*/
-					},
 
 					element: {
 
@@ -1007,15 +792,6 @@
 								};
 							};
 							// render and place html from configuration
-							this.ctx.innerHTML = (() => {
-								let html = "";
-								for(const group of editor.interface.contextmenu.operation) html += `<div class=\"contextmenu group\">${(() => {
-									let component = "";
-									for(const index in group) component += `<div class="grid contextmenu index" title="${group[index].hint}" onclick="${group[index].action}"><span class="contextmenu">${index}</span><span class="contextmenu">${((!!group[index].command)? group[index].command : "")}</span></div>`;
-									return component;
-								})()}</div>`;
-								return html.replace(/\t|\n/g, "");
-							})();
 							this.ctx.setAttribute("state", "active");
 							this.contextmenu.showed = true;
 						},
@@ -1110,26 +886,33 @@
 				};
 
 				window.onload = () => {
-					const index = new ARAVE.Instance({
+
+					document.getElementById("contextmenu").innerHTML = (() => {
+						let html = "";
+						for(const group of editor.interface.contextmenu.operation) {
+							html += "<div class=\"contextmenu group\">" + (() => {
+								let component = "";
+								for(const index in group) {
+									component += "<div class=\"grid contextmenu index\" title=\"" + group[index].hint + "\" onclick=\"" + group[index].action + "\"><span class=\"contextmenu\">" + index + "</span><span class=\"contextmenu\">" + ((!!group[index].command)? group[index].command : "") + "</span></div>"
+								};
+								return component;
+							})() + "</div>";
+						}
+						return html.replace(/\t|\n/g, "");
+					})();
+
+					const index = new ARAVE.Buffer({
 						original: "application",
 						type: "text/plain",
-						max: 50,
+						max: 256,
 					});
 
 					window.test = () => {
-						index.push("\napp".repeat(100));
+						index.insert("\napp".repeat(100));
 						console.log(index.text);
 						index.undo();
 						console.log(index.text);
 					};
-
-					[
-						[() => {
-							document.getElementById('caret').setAttribute('blink', (editor.interface.caret.blink? "off" : "on"));
-							editor.interface.caret.blink = !editor.interface.caret.blink;
-						}, 600]
-
-					].forEach(set => setInterval(...set));
 
 					[
 						[
@@ -1180,12 +963,13 @@
 									}
 								} else {
 									temp.caretClientRect = document.getElementById("caret").getBoundingClientRect();
-									document.getElementById("input").style.transform = `translate(${(temp.caretClientRect.x + 2)}px,${(temp.caretClientRect.y + 2)}"px)`;
-									editor.buffer.keyProperty.shift = event.shiftKey;
+									temp.input.style.transform = "translate(" + (temp.caretClientRect.x + 3) + "px," + (temp.caretClientRect.y + 5) + "px)";
 									switch(event.key) {
 										case "Enter":
-											editor.buffer.pushHistory();
-											editor.interface.refresh(editor.buffer);
+											if(document.getElementById("input").value.split(/\n/).length > 1) {
+												console.log("wow")
+												document.getElementById("input").value = "\n";
+											}
 											break;
 									};
 								};
@@ -1233,7 +1017,7 @@
 
 					for(const instance in editor.timeoutProcess) editor.timeoutProcess[instance]();
 
-					// editor.interface.refresh(editor.buffer);
+					document.getElementById("input").value = "\n"
 
 					document.getElementById("input").focus();
 
