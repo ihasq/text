@@ -353,6 +353,10 @@
 
 		</style>
 
+		<!--
+			<style class="theme" id="dark"> ...
+		-->
+
 		<div id="wrapper">
 
 			<textarea id="input" wrap="off" rows="0" cols="0"></textarea>
@@ -435,7 +439,6 @@
 								length: 0,
 								ln: 0,
 								col: 0,
-								chunkln: init.chunk,
 								refactor() {},
 								apply() {
 									for(let i = 0; i < this.history.timeline[this.history.index].length; i++) {
