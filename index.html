@@ -92,7 +92,18 @@
 				border-right: 1px solid var(--divider-color);
 
 				margin: 0px;
-				padding: 6px 3px;
+				padding: 6px 0px;
+			}
+
+			#editorLine > span {
+				display: inline-block;
+				width: 100%;
+				color: var(--line-color-inactive);
+				padding: 0px 4px;
+			}
+
+			#editorLine > span.active {
+				color: #000;
 			}
 
 			#editorSurface {
@@ -159,8 +170,9 @@
 			/* footer */
 
 			#footer {
-				background: var(--accent-color);
-				color: var(--footer-color);
+				color: #111;
+				background-color: var(--line-background-color);
+				border-top: 1px solid var(--divider-color);
 
 				font-family: var(--font-family);
 				font-size: var(--font-size);
@@ -188,10 +200,6 @@
 				margin-right: 4px;
 			}
 
-			#editorLine > span.active {
-				color: var(--line-color);
-			}
-
 			/* context menu */
 
 			#contextmenu {
@@ -199,7 +207,7 @@
 				height: max-content;
 				background-color: #f0f0f0;
 				outline: 1px solid var(--divider-color);
-				border-radius: 5px;
+				border-radius: 6px;
 				overflow: hidden;
 			}
 
@@ -208,7 +216,7 @@
 			}
 
 			#contextmenu[state="hidden"] {
-				z-index: -1;
+				z-index: -3;
 			}
 
 			#contextmenu > div.group {
@@ -224,8 +232,25 @@
 				font-size: 13px;
 				font-family: var(--font-family);
 				color: #111;
-				padding: 5px 18px;
+				padding: 4px 18px;
 				background-color: transparent;
+			}
+
+			#contextmenu > div.group > div.index:first-child {
+				padding-top: 5px;
+			}
+
+			#contextmenu > div.group > div.index:last-child {
+				padding-bottom: 4px;
+			}
+			
+			#contextmenu > div.group > div.index:hover:not(.disabled) {
+				background: var(--accent-color);
+				color: #fff;
+			}
+
+			#contextmenu > div.group > div.index:hover:not(.disabled) > span:last-child {
+				color: #eee;
 			}
 
 			#contextmenu > div.group > div.index.disabled {
@@ -238,23 +263,6 @@
 				height: max-content;
 				padding: 2px 0;
 				font-size: calc(var(--font-size) * 0.8);
-			}
-
-			#contextmenu > div.group > div.index:hover:not(.disabled) {
-				background: var(--accent-color);
-				color: #fff;
-			}
-
-			#contextmenu > div.group > div.index:hover:not(.disabled) > span:last-child {
-				color: #eee;
-			}
-
-			#contextmenu > div.group > div.index:first-child {
-				padding-top: 7px;
-			}
-
-			#contextmenu > div.group > div.index:last-child {
-				padding-bottom: 7px;
 			}
 
 			#message {
@@ -307,7 +315,7 @@
 				--font-family:				"Consolas", 'Courier New', "Courier", "Monaco", "monospace";
 				--font-size:				13px;
 
-				--accent-color:				#0085d2;
+				--accent-color:				#1ea7bc;
 
 				--tab-size:					4;
 				--line-height: 				16px;
@@ -351,9 +359,12 @@
 
 			<div class="grid" id="editorGrid">
 
-				<pre id="editorLine">  1</pre>
+				<pre id="editorLine">
+<span>  1</span>
+<span class="active">  2</span>
+<span>  3</span></pre>
 
-				<pre id="editorSurface">Arave<span id="caret" blink="on"></span></pre>
+				<pre id="editorSurface">Lorem ipsum dolor sit amet consectetur adipisicing elit. Molestiae consequatur temporibus, voluptates sequi animi sapiente error accusamus rerum. Quo nisi, dolor autem ducimus hic voluptatem quod ea sint ipsa amet? Lorem ipsum dolor sit amet consectetur adipisicing elit. Deserunt, non quae accusantium obcaecati inventore mollitia commodi perferendis dolor velit ea architecto nemo eaque aliquid, voluptate, officiis iusto ratione accusamus in.<span id="caret" blink="on"></span></pre>
 
 			</div>
 
@@ -378,6 +389,9 @@
 
 				const ARAVE = {
 
+					Adapter: class {
+					},
+
 					// ARAVE.Buffer : text buffer
 
 					Buffer: class {
@@ -392,6 +406,7 @@
 								slot: "",
 								table: [],
 								map: [],
+								adapter: init.adapter,
 								history: {
 									timeline: [
 										/*
@@ -404,17 +419,14 @@
 											{ action: "split", by: 4 },
 											{ action: "insert", with: "slot", from: 0, to: 5 },
 										],
+										[
+											{ action: "" }
+										]
 										...
 										*/
 									],
 									index: -1,
 									max: -1,
-								},
-								refactor() {},
-								attribute() {
-									for(let i = 0; i < this.history.timeline[this.history.index].length; i++) {
-									}
-									this.history.index++;
 								},
 								heap: {},
 								type: init.type,
@@ -423,7 +435,13 @@
 								length: 0,
 								ln: 0,
 								col: 0,
-								chunkln: init.chunkRange,
+								chunkln: init.chunk,
+								refactor() {},
+								apply() {
+									for(let i = 0; i < this.history.timeline[this.history.index].length; i++) {
+									}
+									this.history.index++;
+								},
 							}
 
 							if(!!init.original && typeof init.original === "string" && init.original.length !== 0) {
@@ -441,7 +459,7 @@
 									}
 								]);
 								this.#struct.history.index++;
-								this.#struct.attribute();
+								this.#struct.apply();
 							};
 						}
 
@@ -463,20 +481,19 @@
 							return this.#struct.heap.text;
 						}
 
-						set chunkRange(line) {
-							this.#struct.chunkln = line;
+						set rangeOfChunk(line) {
+							if((typeof line === "number") && (line >= 1)) this.#struct.chunkln = line;
 						}
 
-						get getNextChunk() {
+						get next() {}
 
-						}
+						get prev() {}
 
-						get getPrevChunk() {
-						}
+						get pos() {}
 
-						line() {}
+						get currentCaretPos() {}
 
-						slice(indexStart, indexEnd) {}
+						sliced(indexStart, indexEnd) {}
 
 						getCaret() {}
 
@@ -511,7 +528,9 @@
 							this.pos += step;
 						}
 
-						get availableMimeType() {}
+						get availableMimeType() {
+							return []
+						}
 					},
 
 					// ARAVE.Surface : HTML process
@@ -521,10 +540,8 @@
 						#struct; // private
 
 						constructor(init) {
-							Object.assign(this, {
-								instance: init.instance,
-							});
 							this.#struct = {
+								instance: init.instance,
 								target: init.target,
 								interface: {
 									caret: {
@@ -537,7 +554,12 @@
 										}
 									}
 								}
-							}
+							};
+							// this.#struct.target.addEventListener()
+						}
+
+						clipboard = {
+							read() {}
 						}
 
 						copy() {}
@@ -551,6 +573,7 @@
 				const main = new ARAVE.Surface({
 
 					contextmenu: [
+
 						{
 							Undo: {
 								command: "Ctrl+Z",
@@ -627,31 +650,21 @@
 
 					mode: "insertion",
 
-						paste: async () => {
-							await navigator.permissions.query({ name: "clipboard-read" }).then(res => {
-								switch(res.state) {
-									case "granted":
-									case "prompt":
-										console.log("ok");
-										async () => {
-											await navigator.clipboard.readText().then(text => this.clipboardData = text);
-										};
-										break;
-									case "denied":
-										editor.interface.showMessageProc("error", 'Clipboard access rejected, but Ctrl+V is available.');
+					paste: async () => {
+						await navigator.permissions.query({ name: "clipboard-read" }).then(res => {
+							switch(res.state) {
+								case "granted":
+								case "prompt":
+									console.log("ok");
+									async () => {
+										await navigator.clipboard.readText().then(text => this.clipboardData = text);
+									};
+									break;
+								case "denied":
+									editor.interface.showMessageProc("error", 'Clipboard access rejected, but Ctrl+V is available.');
 
-								}
-							})
-						},
-
-					element: {
-
-						surface: document.getElementById("editorSurface"),
-						editorGrid: document.getElementById("editorGrid"),
-						editorLine: document.getElementById("editorLine"),
-						input: document.getElementById("input"),
-						editorCaret: document.getElementById("caret")
-
+							}
+						})
 					},
 
 					interface: {
@@ -754,25 +767,24 @@
 							y: 0
 						},
 
-						refresh(init) {
-							let temp = {
-								line: init.data.split("").filter(index => index === "\n"),
-								lineDOM: "",
-								surfaceDOM: "",
-								currentSurfaceLine: document.getElementById("editorSurface").children,
-								activeLine: [1],
-							};
-							temp.lineDigits = temp.line.length.toString().length;
-							if(temp.lineDigits < this.minimalDigits) temp.lineDigits = this.minimalDigits;
-							for(let i = 1; i <= temp.line.length; i++) {
-								temp.lineDOM += (" ".repeat(temp.lineDigits - i.toString().length) + (
-									(temp.activeLine.includes(i))? "<span class='active'>" + i + "</span>" : i
-								)+ "\n");
-							};
-							this.line.innerHTML = (temp.lineDOM += "\n".repeat(Math.ceil(document.getElementById("wrapper").clientHeight / 16) - 2));
-							// this.surface.innerHTML = 
-							this.lineCount = temp.line.length;
-						},
+						// refresh(init) {
+						// 	let temp = {
+						// 		line: init.data.split("").filter(index => index === "\n"),
+						// 		lineDOM: "",
+						// 		surfaceDOM: "",
+						// 		currentSurfaceLine: document.getElementById("editorSurface").children,
+						// 		activeLine: [1],
+						// 	};
+						// 	temp.lineDigits = temp.line.length.toString().length;
+						// 	if(temp.lineDigits < this.minimalDigits) temp.lineDigits = this.minimalDigits;
+						// 	for(let i = 1; i <= temp.line.length; i++) {
+						// 		temp.lineDOM += (" ".repeat(temp.lineDigits - i.toString().length) + (
+						// 			(temp.activeLine.includes(i))? "<span class='active'>" + i + "</span>" : i
+						// 		)+ "\n");
+						// 	};
+						// 	this.line.innerHTML = (temp.lineDOM += "\n".repeat(Math.ceil(document.getElementById("wrapper").clientHeight / 16) - 2));
+						// 	this.lineCount = temp.line.length;
+						// },
 
 						showMessageProc(type, arg) {
 							this.message.children[0].textContent = arg.replace(/\n/g, "");
@@ -907,19 +919,15 @@
 
 				window.onload = () => {
 
-					document.getElementById("contextmenu").innerHTML = (() => {
+					{
 						let html = "";
 						for(const group of editor.interface.contextmenu.operation) {
-							html += "<div class=\"contextmenu group\">" + (() => {
-								let component = "";
-								for(const index in group) {
-									component += "<div class=\"grid contextmenu index\" title=\"" + group[index].hint + "\" onclick=\"" + group[index].action + "\"><span class=\"contextmenu\">" + index + "</span><span class=\"contextmenu\">" + ((!!group[index].command)? group[index].command : "") + "</span></div>"
-								};
-								return component;
-							})() + "</div>";
+							let component = "";
+							for(const index in group) component += ("<div class=\"grid contextmenu index\" title=\"" + group[index].hint + "\" onclick=\"" + group[index].action + "\"><span class=\"contextmenu\">" + index + "</span><span class=\"contextmenu\">" + ((!!group[index].command)? group[index].command : "") + "</span></div>")
+							html += ("<div class=\"contextmenu group\">" + component + "</div>");
 						}
-						return html.replace(/\t|\n/g, "");
-					})();
+						document.getElementById("contextmenu").innerHTML = html.replace(/\t|\n/g, "");
+					};
 
 					const index = new ARAVE.Buffer({
 						original: "application",
@@ -945,6 +953,7 @@
 						[
 							"wheel", event => {
 								event.preventDefault();
+								document.getElementById("editorSurface").scrollLeft += (event.deltaX / 2);
 							}, { passive: false }
 						],
 
@@ -983,7 +992,15 @@
 									}
 								} else {
 									temp.caretClientRect = document.getElementById("caret").getBoundingClientRect();
-									temp.input.style.transform = "translate(" + (temp.caretClientRect.x + 3) + "px," + (temp.caretClientRect.y + 5) + "px)";
+									if(temp.caretClientRect.x > window.innerWidth) {
+										document.getElementById("editorSurface").scrollLeft = temp.caretClientRect.x;
+										temp.caretClientRect.x = window.innerWidth;
+									}
+									if(temp.caretClientRect.y > window.innerHeight) {
+										document.getElementById("editorGrid").scrollTop = temp.caretClientRect.y;
+										temp.caretClientRect.y = window.innerHeight;
+									};
+									document.getElementById("input").style.transform = "translate(" + (temp.caretClientRect.x - 1) + "px," + (temp.caretClientRect.y + 5) + "px)";
 									switch(event.code) {
 										case "Enter":
 											setTimeout(()=>{
@@ -991,7 +1008,6 @@
 											}, 0)
 											break;
 									}
-									
 								};
 							}, { passive: false }
 						],
