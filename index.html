@@ -28,7 +28,279 @@
 
 		<meta charset="utf-8"/>
 
-		<link href="src/css/editor.css" rel="stylesheet" />
+		<style>
+			* {
+				box-sizing: border-box;
+			}
+
+			.grid {
+				display: grid;
+			}
+
+
+			html {
+				height: 100vh;
+				width: 100vw;
+			}
+
+			html, body {
+				overflow: hidden;
+			}
+
+			body, div#wrapper, #editorGrid {
+				height: 100%;
+				width: 100%;
+			}
+
+			html, body, div#wrapper, #editorGrid, #editorLine {
+				padding: 0px;
+				margin: 0px;
+				user-select: none;
+			}
+
+			body {
+				grid-template-rows: auto calc(var(--font-size) + 8px);
+			}
+
+			div#wrapper {
+				position: relative;
+			}
+
+			div#wrapper > * {
+				position: absolute;
+			}
+
+			#editorGrid {
+				transform: translateZ(0);
+				z-index: 0;
+				grid-template-columns: var(--lineNumber-width) auto;
+				width: 100%;
+				height: 100%;
+				overflow: hidden;
+			}
+
+			#editorLine {
+				font-family: var(--font-family);
+				font-size: var(--font-size);
+				tab-size: var(--tab-size);
+				line-height: var(--line-height);
+
+				color: var(--line-color-inactive);
+				background-color: var(--line-background-color);
+
+				border-right: 1px solid var(--divider-color);
+
+				margin: 0px;
+				padding: 6px 0px;
+			}
+
+			#editorLine > span {
+				display: inline-block;
+				width: 100%;
+				color: var(--line-color-inactive);
+				padding: 0px 4px;
+			}
+
+			#editorLine > span.active {
+				color: #000;
+			}
+
+			#editorSurface {
+				font-family: var(--font-family);
+				font-size: var(--font-size);
+				tab-size: var(--tab-size);
+				line-height: var(--line-height);
+
+				background-color: var(--background-color);
+				color: var(--color);
+
+				overflow: hidden;
+
+				height: max-content;
+				min-height: 100%;
+
+				margin: 0px;
+				padding: 6px 10px 0px;
+
+				cursor: text;
+
+				user-select: auto;
+			}
+
+			#editorSurface:focus {
+				outline: var(--focus-outline);
+			}
+
+			#scrollTopBar {
+				z-index: 2;
+				right: 0;
+				width: 4px;
+				height: 50%;
+				background-color: #555;
+				opacity: 70%;
+				border-radius: 2px;
+			}
+
+			#editorSurface::after {
+				content: " ";
+			}
+
+			span#caret[blink="on"] {
+				outline: var(--caret-style);
+			}
+
+			span#caret[blink="off"] {
+				outline: none;
+			}
+
+			textarea#input {
+				z-index: 1;
+				opacity: 0;
+				height: 4px;
+				width: 1px;
+				resize: none;
+				user-select: none;
+				border: none;
+				padding: 0px;
+				display: inline-block;
+				transform: 0;
+			}
+
+			/* footer */
+
+			#footer {
+				color: #111;
+				background-color: var(--line-background-color);
+				border-top: 1px solid var(--divider-color);
+
+				font-family: var(--font-family);
+				font-size: var(--font-size);
+
+				width: 100%;
+				grid-template-columns: 200px auto 400px;
+				overflow: hidden;
+			}
+
+			#footer > div {
+				width: auto;
+				margin: auto 6px;
+			}
+
+			#footer > div.left > span {
+				margin-left: 4px;
+			}
+
+			#footer > div.right {
+				text-align: end;
+			}
+
+			#footer > div.right > span {
+				text-align: end;
+				margin-right: 4px;
+			}
+
+			/* context menu */
+
+			#contextmenu {
+				width: 220px;
+				height: max-content;
+				background-color: #eee;
+				outline: 1px solid var(--divider-color);
+				border-radius: 6px;
+				overflow: hidden;
+			}
+
+			#contextmenu[state="active"] {
+				z-index: 3;
+			}
+
+			#contextmenu[state="hidden"] {
+				z-index: -3;
+			}
+
+			#contextmenu > div.group {
+				border-bottom: 1px solid var(--divider-color);
+			}
+
+			#contextmenu > div.group:last-child {
+				border-bottom: none;
+			}
+
+			#contextmenu > div.group > div.index {
+				grid-template-columns: auto 60px;
+				font-size: 13px;
+				font-family: var(--font-family);
+				color: #111;
+				padding: 4px 18px;
+				background-color: transparent;
+			}
+
+			#contextmenu > div.group > div.index:first-child {
+				padding-top: 5px;
+			}
+
+			#contextmenu > div.group > div.index:last-child {
+				padding-bottom: 4px;
+			}
+
+			#contextmenu > div.group > div.index:hover:not(.disabled) {
+				background: var(--accent-color);
+				color: #fff;
+			}
+
+			#contextmenu > div.group > div.index:hover:not(.disabled) > span:last-child {
+				color: #eee;
+			}
+
+			#contextmenu > div.group > div.index.disabled {
+				color: #666;
+			}
+
+			#contextmenu > div.group > div.index > span:last-child {
+				color: #33333d;
+				text-align: end;
+				height: max-content;
+				padding: 2px 0;
+				font-size: calc(var(--font-size) * 0.8);
+			}
+
+			#message {
+				height: max-content;
+				width: max-content;
+				inset: calc(100% - 48px) 16px 0 auto;
+				background-color: #202023;
+				outline: 1px solid #555558;
+				color: #fff;
+				font-family: "Consolas", 'Courier New', "Courier", "Monaco", "monospace";
+				font-size: calc(var(--font-size) * 0.9);
+				padding: 10px 12px;
+				border-radius: 3px;
+				grid-template-columns: max-content 16px max-content;
+			}
+
+			#message[state="hidden"] {
+				z-index: -4;
+			}
+
+			#message[state="active"] {
+				z-index: 4;
+			}
+
+			#message[type="error"] {
+				background-color: #500;
+				outline: 1px solid #f44;
+			}
+
+			#message > .button {
+				color: #bbb;
+				font-size: calc(var(--font-size) * 0.8);
+			}
+
+			#message > .button:hover {
+				color: #fff;
+			}
+
+		</style>
 
 	</head>
 
@@ -126,460 +398,609 @@ Lorem ipsum dolor sit amet consectetur adipisicing elit. Molestiae consequatur t
 			<div></div>
 			<div class="right"><span>tab: 4</span><span>HTML</span></div>
 		</div>
-		<script type="module">
 
-			import * as ARAVE from "./js/export.mjs"
+		<script type="text/javascript">
 
-			const main = new ARAVE.Surface({
+			"use strict";
 
-				contextmenu: [
+			{
 
-					{
-						Undo: {
-							command: "Ctrl+Z",
-							action: "editor.buffer.undo()"
-						},
-						Redo: {
-							command: "Ctrl+Y",
-							action: "editor.buffer.redo()"
-						},
-					},
-					{
-						Copy: {
-							command: "Ctrl+C",
-							action: "editor.copy('contextmenu')"
-						},
-						Cut: {
-							command: "Ctrl+X",
-							action: "editor.cut('contextmenu')"
-						},
-						Paste: {
-							command: "Ctrl+V",
-							action: "editor.buffer.paste()"
-						},
-					},
-					{
-						Save: {
-							command: "Ctrl+S",
-							action: "editor.save()"
-						},
-						New: {
-							command: "Ctrl+N",
-							action: "editor.buffer.flush()"
-						},
-						Open: {
-							command: "Ctrl+O",
-							action: "editor.open()"
-						},
-					},
-					{
-						Search: {
-							command: "Ctrl+F",
-							action: "editor.save()"
-						},
-						Replace: {
-							command: "Ctrl+H",
-							action: "editor.buffer.flush()"
-						},
-					},
-					{
-						Operate: {
-							command: "Ctrl+F",
-							action: "test()"
-						},
-					},
-					{
-						Settings: {},
-						"About Text app": {}
-					},
-				]
-			})
+				const ARAVE = {
 
-			const editor = {
+					Buffer: class {
 
-				mode: "insertion",
+						#struct;
 
-				paste: async () => {
-					await navigator.permissions.query({ name: "clipboard-read" }).then(res => {
-						switch(res.state) {
-							case "granted":
-							case "prompt":
-								console.log("ok");
-								async () => {
-									await navigator.clipboard.readText().then(text => this.clipboardData = text);
-								};
-								break;
-							case "denied":
-								editor.interface.showMessageProc("error", 'Clipboard access rejected, but Ctrl+V is available.');
+						constructor(init) {
 
+							this.#struct = {
+								original: "",
+								add: "",
+								slot: "",
+								table: [],
+								map: [],
+								adapter: init.adapter,
+								history: {
+									timeline: [
+										/*
+										[
+											{ action: "insert", with: "original", from: 0, to: 11 },
+											{ action: "movepos", by: 11 }
+										],
+										[
+											{ action: "movepos", by -11 }
+											{ action: "split", by: 4 },
+											{ action: "insert", with: "slot", from: 0, to: 5 },
+										],
+										[
+											{ action: "" }
+										]
+										...
+										*/
+									],
+									index: -1,
+									max: -1,
+								},
+								heap: {},
+								type: init.type,
+								selection: [],
+								pos: 0,
+								length: 0,
+								ln: 0,
+								col: 0,
+								refactor() {},
+								apply() {
+									for(let i = 0; i < this.history.timeline[this.history.index].length; i++) {
+									}
+									this.history.index++;
+								},
+							}
+
+							if(!!init.original && typeof init.original === "string" && init.original.length !== 0) {
+								this.#struct.original = init.original;
+								this.#struct.history.timeline.push([
+									{
+										action: "insert",
+										with: "original",
+										from: 0,
+										to: init.original.length
+									},
+									{
+										action: "movepos",
+										by: init.original.length
+									}
+								]);
+								this.#struct.history.index++;
+								this.#struct.apply();
+							};
 						}
-					})
-				},
 
-				interface: {
+						get selection() {
+							return this.#struct.selection;
+						}
 
-					surface: document.getElementById("editorSurface"),
+						get text() {
+							this.#struct.heap = {
+								text: "",
+								range: []
+							};
+							for(let i = 0; i < this.#struct.index + 1; i++) {
+								this.#struct.heap.text += this.#struct[this.#struct.table[i].type].slice(
+									this.#struct.table[i].from,
+									this.#struct.table[i].from + this.#struct.table[i].to
+								)
+							};
+							return this.#struct.heap.text;
+						}
 
-					grid: document.getElementById("editorGrid"),
+						set rangeOfChunk(line) {
+							if((typeof line === "number") && (line >= 1)) this.#struct.chunkln = line;
+						}
 
-					line: document.getElementById("editorLine"),
+						get next() {}
 
-					message: document.getElementById("message"),
+						get prev() {}
 
-					ctx: document.getElementById("contextmenu"),
+						get pos() {}
 
-					caret: {
-						blink: true
+						get currentCaretPos() {}
+
+						sliced(indexStart, indexEnd) {}
+
+						getCaret() {}
+
+						insert(string) {
+							this.#struct.piece.table.push({
+								type: "hot",
+								from: this.#struct.add.length,
+								to: string.length
+							});
+							this.pos += string.length;
+							this.#struct.add += string;
+							this.#struct.piece.index++;
+						}
+
+						undo() {
+							if(0 < this.#struct.piece.index) this.#struct.piece.index--;
+						}
+
+						redo() {
+							if((this.#struct.piece.index - 1) < this.#struct.piece.table.length) this.#struct.piece.index++;
+						}
+
+						up() {}
+
+						down() {}
+
+						left(step) {
+							this.pos -= step;
+						}
+
+						right(step) {
+							this.pos += step;
+						}
+
+						get availableMimeType() {
+							return []
+						}
 					},
 
-					keyProperty: {
-						shift: false
+					Adapter: class { constructor(init) {} },
+
+					Surface: class { constructor(init) {} }
+				}
+
+				const main = new ARAVE.Surface({
+
+					contextmenu: [
+
+						{
+							Undo: {
+								command: "Ctrl+Z",
+								action: "editor.buffer.undo()"
+							},
+							Redo: {
+								command: "Ctrl+Y",
+								action: "editor.buffer.redo()"
+							},
+						},
+						{
+							Copy: {
+								command: "Ctrl+C",
+								action: "editor.copy('contextmenu')"
+							},
+							Cut: {
+								command: "Ctrl+X",
+								action: "editor.cut('contextmenu')"
+							},
+							Paste: {
+								command: "Ctrl+V",
+								action: "editor.buffer.paste()"
+							},
+						},
+						{
+							Save: {
+								command: "Ctrl+S",
+								action: "editor.save()"
+							},
+							New: {
+								command: "Ctrl+N",
+								action: "editor.buffer.flush()"
+							},
+							Open: {
+								command: "Ctrl+O",
+								action: "editor.open()"
+							},
+						},
+						{
+							Search: {
+								command: "Ctrl+F",
+								action: "editor.save()"
+							},
+							Replace: {
+								command: "Ctrl+H",
+								action: "editor.buffer.flush()"
+							},
+						},
+						{
+							Operate: {
+								command: "Ctrl+F",
+								action: "test()"
+							},
+						},
+						{
+							Settings: {},
+							"About Text app": {}
+						},
+					]
+				})
+
+				const editor = {
+
+					mode: "insertion",
+
+					paste: async () => {
+						await navigator.permissions.query({ name: "clipboard-read" }).then(res => {
+							switch(res.state) {
+								case "granted":
+								case "prompt":
+									console.log("ok");
+									async () => {
+										await navigator.clipboard.readText().then(text => this.clipboardData = text);
+									};
+									break;
+								case "denied":
+									editor.interface.showMessageProc("error", 'Clipboard access rejected, but Ctrl+V is available.');
+
+							}
+						})
 					},
 
-					contextmenu:{
-						showed: false,
-						operation: [
-							{
-								Undo: {
-									command: "Ctrl+Z",
-									action: "editor.buffer.undo()"
+					interface: {
+
+						surface: document.getElementById("editorSurface"),
+
+						grid: document.getElementById("editorGrid"),
+
+						line: document.getElementById("editorLine"),
+
+						message: document.getElementById("message"),
+
+						ctx: document.getElementById("contextmenu"),
+
+						caret: {
+							blink: true
+						},
+
+						keyProperty: {
+							shift: false
+						},
+
+						contextmenu:{
+							showed: false,
+							operation: [
+								{
+									Undo: {
+										command: "Ctrl+Z",
+										action: "editor.buffer.undo()"
+									},
+									Redo: {
+										command: "Ctrl+Y",
+										action: "editor.buffer.redo()"
+									},
 								},
-								Redo: {
-									command: "Ctrl+Y",
-									action: "editor.buffer.redo()"
+								{
+									Copy: {
+										command: "Ctrl+C",
+										action: "editor.copy('contextmenu')"
+									},
+									Cut: {
+										command: "Ctrl+X",
+								
+										action: "editor.cut('contextmenu')"
+									},
+									Paste: {
+										command: "Ctrl+V",
+										action: "editor.buffer.paste()"
+									},
 								},
-							},
-							{
-								Copy: {
-									command: "Ctrl+C",
-									action: "editor.copy('contextmenu')"
+								{
+									Save: {
+										command: "Ctrl+S",
+										action: "editor.save()"
+									},
+									New: {
+										command: "Ctrl+N",
+								
+										action: "editor.buffer.flush()"
+									},
+									Open: {
+										command: "Ctrl+O",
+										action: "editor.open()"
+									},
 								},
-								Cut: {
-									command: "Ctrl+X",
-							
-									action: "editor.cut('contextmenu')"
+								{
+									Search: {
+										command: "Ctrl+F",
+										action: "editor.save()"
+									},
+									Replace: {
+										command: "Ctrl+H",
+								
+										action: "editor.buffer.flush()"
+									},
 								},
-								Paste: {
-									command: "Ctrl+V",
-									action: "editor.buffer.paste()"
+								{
+									Operate: {
+										command: "Ctrl+F",
+										action: "test()"
+									},
 								},
-							},
-							{
-								Save: {
-									command: "Ctrl+S",
-									action: "editor.save()"
+								{
+									Settings: {},
+									"About Text app": {}
 								},
-								New: {
-									command: "Ctrl+N",
-							
-									action: "editor.buffer.flush()"
-								},
-								Open: {
-									command: "Ctrl+O",
-									action: "editor.open()"
-								},
-							},
-							{
-								Search: {
-									command: "Ctrl+F",
-									action: "editor.save()"
-								},
-								Replace: {
-									command: "Ctrl+H",
-							
-									action: "editor.buffer.flush()"
-								},
-							},
-							{
-								Operate: {
-									command: "Ctrl+F",
-									action: "test()"
-								},
-							},
-							{
-								Settings: {},
-								"About Text app": {}
-							},
-						]
+							]
+						},
+
+						previousProperty: {
+							x: 0,
+							y: 0
+						},
+
+						showMessageProc(type, arg) {
+							this.message.children[0].textContent = arg.replace(/\n/g, "");
+							this.message.setAttribute("type", type);
+							this.message.setAttribute("state", "active");
+						},
+
+						closeMessageProc() {
+							this.message.setAttribute("state", "hidden");
+						},
+
+						scrollProc() {
+							let temp = {
+								top: (!this.keyProperty.shift)? "deltaY" : "deltaX",
+								left: (!this.keyProperty.shift)? "deltaX" : "deltaY",
+							};
+							this.grid.scrollTop += event[temp.top];
+							if(this.lineCount === 1) this.grid.scrollTop = 0;
+							this.surface.scrollLeft += event[temp.left];
+							document.getElementById("scrollTopBar").style.transform = `translateY${(document.getElementById("editorGrid").scrollTop / document.getElementById("editorGrid").scrollHeight)}px`;
+						},
+
+						showContextMenuProc() {
+							let temp = Object.create(null);
+							// calculate and set contextmenu location
+							if(event.pageX !== this.previousProperty.x || event.pageY !== this.previousProperty.y) {
+								temp.clientRect = this.ctx.getBoundingClientRect();
+								this.ctx.style.transform = `translate(${
+									event.pageX + 2 - (((event.pageX + temp.clientRect.width) > window.innerWidth)? (temp.clientRect.width + 4) : -4)
+								}px,${
+									event.pageY + 2 - (((event.pageY + temp.clientRect.height) > window.innerHeight)? (temp.clientRect.height + 4) : -4)
+								}px)`;
+								this.previousProperty = {
+									x: event.pageX,
+									y: event.pageY
+								};
+							};
+							// render and place html from configuration
+							this.ctx.setAttribute("state", "active");
+							this.contextmenu.showed = true;
+						},
+
+						hideContextMenuProc() {
+							this.ctx.setAttribute("state", "hidden");
+							editor.mode = "insertion";
+							editor.interface.contextmenu.showed = false;
+						}
 					},
+
+					selectionProperty: null,
 
 					previousProperty: {
-						x: 0,
-						y: 0
-					},
-
-					showMessageProc(type, arg) {
-						this.message.children[0].textContent = arg.replace(/\n/g, "");
-						this.message.setAttribute("type", type);
-						this.message.setAttribute("state", "active");
-					},
-
-					closeMessageProc() {
-						this.message.setAttribute("state", "hidden");
-					},
-
-					scrollProc() {
-						let temp = {
-							top: (!this.keyProperty.shift)? "deltaY" : "deltaX",
-							left: (!this.keyProperty.shift)? "deltaX" : "deltaY",
-						};
-						this.grid.scrollTop += event[temp.top];
-						if(this.lineCount === 1) this.grid.scrollTop = 0;
-						this.surface.scrollLeft += event[temp.left];
-						document.getElementById("scrollTopBar").style.transform = `translateY${(document.getElementById("editorGrid").scrollTop / document.getElementById("editorGrid").scrollHeight)}px`;
-					},
-
-					showContextMenuProc() {
-						let temp = Object.create(null);
-						// calculate and set contextmenu location
-						if(event.pageX !== this.previousProperty.x || event.pageY !== this.previousProperty.y) {
-							temp.clientRect = this.ctx.getBoundingClientRect();
-							this.ctx.style.transform = `translate(${
-								event.pageX + 2 - (((event.pageX + temp.clientRect.width) > window.innerWidth)? (temp.clientRect.width + 4) : -4)
-							}px,${
-								event.pageY + 2 - (((event.pageY + temp.clientRect.height) > window.innerHeight)? (temp.clientRect.height + 4) : -4)
-							}px)`;
-							this.previousProperty = {
-								x: event.pageX,
-								y: event.pageY
-							};
-						};
-						// render and place html from configuration
-						this.ctx.setAttribute("state", "active");
-						this.contextmenu.showed = true;
-					},
-
-					hideContextMenuProc() {
-						this.ctx.setAttribute("state", "hidden");
-						editor.mode = "insertion";
-						editor.interface.contextmenu.showed = false;
-					}
-				},
-
-				selectionProperty: null,
-
-				previousProperty: {
-					length: 0,
-					inputValueLine: 0,
-					page: {
-						x: 0,
-						y: 0
-					}
-				},
-
-				// global methods: called by contextmenu or shortcuts
-
-				createInstance(init) {
-					if(!!editor.buffer.instance[init.name]) {
-						throw new Error("Cannot create new instance: same name instance already exists");
-					} else {
-						editor.buffer.instance[init.name] = {
-
+						length: 0,
+						inputValueLine: 0,
+						page: {
+							x: 0,
+							y: 0
 						}
-					}
-				},
+					},
 
-				copy(executedFrom) {
-					editor.buffer.pasteToClipboard({
-						text: editor.buffer.getSelectedData({ type: "string", reduce: false }),
-						executedFrom: executedFrom
-					})
-				},
+					// global methods: called by contextmenu or shortcuts
 
-				cut(executedFrom) {
-					editor.buffer.pasteToClipboard({
-						text: editor.buffer.getSelectedData({ type: "string", reduce: true }),
-						executedFrom: executedFrom
-					})
-				},
+					createInstance(init) {
+						if(!!editor.buffer.instance[init.name]) {
+							throw new Error("Cannot create new instance: same name instance already exists");
+						} else {
+							editor.buffer.instance[init.name] = {
 
-				open: async (readAs) => {
+							}
+						}
+					},
 
-					let temp = Object.create(null);
+					copy(executedFrom) {
+						editor.buffer.pasteToClipboard({
+							text: editor.buffer.getSelectedData({ type: "string", reduce: false }),
+							executedFrom: executedFrom
+						})
+					},
 
-					[editor.buffer.fileHandle] = await window.showOpenFilePicker(
-						{
+					cut(executedFrom) {
+						editor.buffer.pasteToClipboard({
+							text: editor.buffer.getSelectedData({ type: "string", reduce: true }),
+							executedFrom: executedFrom
+						})
+					},
+
+					open: async (readAs) => {
+
+						let temp = Object.create(null);
+
+						[editor.buffer.fileHandle] = await window.showOpenFilePicker(
+							{
+								types: [
+									{
+										description: "Text file",
+										accept: {
+											"text/*": [],
+											"application/*": []
+										},
+									}
+								],
+								excludeAcceptAllOption: true,
+								multiple: false
+							}
+						);
+						temp.result = new FileReader;
+						temp.result.readAsText(await editor.buffer.fileHandle.getFile(), "UTF-8");
+						temp.result.onload = event => {
+							editor.buffer.data = event.target.result
+						};
+
+					},
+
+					save: async () => {
+						let temp = Object.create(null);
+						if(!editor.buffer.fileHandle) editor.buffer.fileHandle = await window.showSaveFilePicker({
 							types: [
 								{
 									description: "Text file",
 									accept: {
 										"text/*": [],
 										"application/*": []
-									},
-								}
-							],
-							excludeAcceptAllOption: true,
-							multiple: false
+									}
+								},
+							]
+						});
+						temp.writable = await editor.buffer.fileHandle.createWritable();
+						await temp.writable.write(editor.buffer.data);
+						await temp.writable.close();
+					},
+				};
+
+				window.onload = () => {
+
+					{
+						let html = "";
+						for(const group of editor.interface.contextmenu.operation) {
+							let component = "";
+							for(const index in group) component += ("<div class=\"grid contextmenu index\" title=\"" + group[index].hint + "\" onclick=\"" + group[index].action + "\"><span class=\"contextmenu\">" + index + "</span><span class=\"contextmenu\">" + ((!!group[index].command)? group[index].command : "") + "</span></div>")
+							html += ("<div class=\"contextmenu group\">" + component + "</div>");
 						}
-					);
-					temp.result = new FileReader;
-					temp.result.readAsText(await editor.buffer.fileHandle.getFile(), "UTF-8");
-					temp.result.onload = event => {
-						editor.buffer.data = event.target.result
+						document.getElementById("contextmenu").innerHTML = html.replace(/\t|\n/g, "");
 					};
 
-				},
-
-				save: async () => {
-					let temp = Object.create(null);
-					if(!editor.buffer.fileHandle) editor.buffer.fileHandle = await window.showSaveFilePicker({
-						types: [
-							{
-								description: "Text file",
-								accept: {
-									"text/*": [],
-									"application/*": []
-								}
-							},
-						]
+					const index = new ARAVE.Buffer({
+						original: "application",
+						type: "text/plain",
+						max: 256,
 					});
-					temp.writable = await editor.buffer.fileHandle.createWritable();
-					await temp.writable.write(editor.buffer.data);
-					await temp.writable.close();
-				},
-			};
 
-			window.onload = () => {
-
-				{
-					let html = "";
-					for(const group of editor.interface.contextmenu.operation) {
-						let component = "";
-						for(const index in group) component += ("<div class=\"grid contextmenu index\" title=\"" + group[index].hint + "\" onclick=\"" + group[index].action + "\"><span class=\"contextmenu\">" + index + "</span><span class=\"contextmenu\">" + ((!!group[index].command)? group[index].command : "") + "</span></div>")
-						html += ("<div class=\"contextmenu group\">" + component + "</div>");
-					}
-					document.getElementById("contextmenu").innerHTML = html.replace(/\t|\n/g, "");
-				};
-
-				const index = new ARAVE.Buffer({
-					original: "application",
-					type: "text/plain",
-					max: 256,
-				});
-
-				window.test = () => {
-					index.insert("\napp".repeat(100));
-					console.log(index.text);
-					index.undo();
-					console.log(index.text);
-				};
-
-				[
-					[
-						"beforeunload", event => {
-							event.preventDefault();
-							event.returnValue = "";
-						}, { passive: false }
-					],
+					window.test = () => {
+						index.insert("\napp".repeat(100));
+						console.log(index.text);
+						index.undo();
+						console.log(index.text);
+					};
 
 					[
-						"wheel", event => {
-							event.preventDefault();
-							document.getElementById("editorGrid").scrollTop += (event.deltaY / 3);
-							document.getElementById("editorSurface").scrollLeft += (event.deltaX / 3);
-						}, { passive: false }
-					],
+						[
+							"beforeunload", event => {
+								event.preventDefault();
+								event.returnValue = "";
+							}, { passive: false }
+						],
 
-					// key event
+						[
+							"wheel", event => {
+								event.preventDefault();
+								document.getElementById("editorGrid").scrollTop += (event.deltaY / 3);
+								document.getElementById("editorSurface").scrollLeft += (event.deltaX / 3);
+							}, { passive: false }
+						],
 
-					[
-						"keydown", event => {
-							let temp = {
-								input: document.getElementById("input")
-							};
-							if(event.ctrlKey) {
-								switch(event.key) {
-									case "v":
-										editor.buffer.pushHistory();
-										setTimeout(() => {
-											console.log(document.getElementById("input").value);
-											if(!(temp.input.value.length === 0)) {
-												editor.buffer.pushHistory();
-											}
-										}, 0);
-										break;
-									case "x":
-									case "c":
-										editor.buffer.pushHistory();
-										temp.input.value = editor.buffer.getSelectedData().value;
-										temp.input.select();
-										setTimeout(() => {
-											if(event.key === "x") {
-												console.log("x")
-												editor.buffer.pushHistory({
-													action: "remove",
-													value: temp.input.value
-												});
-											};
-										}, 0);
-								}
-							} else {
-								temp.caretClientRect = document.getElementById("caret").getBoundingClientRect();
-								if(temp.caretClientRect.x > window.innerWidth) {
-									document.getElementById("editorSurface").scrollLeft = temp.caretClientRect.x;
-									temp.caretClientRect.x = window.innerWidth;
-								}
-								if(temp.caretClientRect.y > window.innerHeight) {
-									document.getElementById("editorGrid").scrollTop = temp.caretClientRect.y;
-									temp.caretClientRect.y = window.innerHeight;
+						// key event
+
+						[
+							"keydown", event => {
+								let temp = {
+									input: document.getElementById("input")
 								};
-								document.getElementById("input").style.transform = "translate(" + (temp.caretClientRect.x - 1) + "px," + (temp.caretClientRect.y + 5) + "px)";
-								switch(event.code) {
-									case "Enter":
-										setTimeout(()=>{
-											temp.input.value = ""
-										}, 0)
-										break;
+								if(event.ctrlKey) {
+									switch(event.key) {
+										case "v":
+											editor.buffer.pushHistory();
+											setTimeout(() => {
+												console.log(document.getElementById("input").value);
+												if(!(temp.input.value.length === 0)) {
+													editor.buffer.pushHistory();
+												}
+											}, 0);
+											break;
+										case "x":
+										case "c":
+											editor.buffer.pushHistory();
+											temp.input.value = editor.buffer.getSelectedData().value;
+											temp.input.select();
+											setTimeout(() => {
+												if(event.key === "x") {
+													console.log("x")
+													editor.buffer.pushHistory({
+														action: "remove",
+														value: temp.input.value
+													});
+												};
+											}, 0);
+									}
+								} else {
+									temp.caretClientRect = document.getElementById("caret").getBoundingClientRect();
+									if(temp.caretClientRect.x > window.innerWidth) {
+										document.getElementById("editorSurface").scrollLeft = temp.caretClientRect.x;
+										temp.caretClientRect.x = window.innerWidth;
+									}
+									if(temp.caretClientRect.y > window.innerHeight) {
+										document.getElementById("editorGrid").scrollTop = temp.caretClientRect.y;
+										temp.caretClientRect.y = window.innerHeight;
+									};
+									document.getElementById("input").style.transform = "translate(" + (temp.caretClientRect.x - 1) + "px," + (temp.caretClientRect.y + 5) + "px)";
+									switch(event.code) {
+										case "Enter":
+											setTimeout(()=>{
+												temp.input.value = ""
+											}, 0)
+											break;
+									}
+								};
+							}, { passive: false }
+						],
+
+						// mouse event
+
+						[
+							"pointerdown", event => {
+								// contextmenu appearance control process
+								if(!event.target.classList.contains("contextmenu")) {
+									if(editor.interface.contextmenu.showed) {
+										editor.interface.hideContextMenuProc();
+									} else if(event.button === 2) {
+										editor.interface.showContextMenuProc();
+										editor.mode = "contextmenu";
+									};
+								} else {
 								}
-							};
-						}, { passive: false }
-					],
+								switch(event.target.id) {
+									case "closeMessage":
+										editor.interface.closeMessageProc();
+										break;
+								};
+							}
+						],
 
-					// mouse event
-
-					[
-						"pointerdown", event => {
-							// contextmenu appearance control process
-							if(!event.target.classList.contains("contextmenu")) {
-								if(editor.interface.contextmenu.showed) {
+						[
+							"pointerup", event => {
+								console.log(event.target.textContent)
+								if(event.target.classList.contains("contextmenu")) {
 									editor.interface.hideContextMenuProc();
-								} else if(event.button === 2) {
-									editor.interface.showContextMenuProc();
-									editor.mode = "contextmenu";
-								};
-							} else {
-							}
-							switch(event.target.id) {
-								case "closeMessage":
-									editor.interface.closeMessageProc();
-									break;
-							};
-						}
-					],
+								} else {
+									document.getElementById("input").focus();
+								}
+							}, { passive: true }
+						],
 
-					[
-						"pointerup", event => {
-							console.log(event.target.textContent)
-							if(event.target.classList.contains("contextmenu")) {
-								editor.interface.hideContextMenuProc();
-							} else {
-								document.getElementById("input").focus();
-							}
-						}, { passive: true }
-					],
+						[
+							"contextmenu", event => event.preventDefault(), { passive: false }
+						]
 
-					[
-						"contextmenu", event => event.preventDefault(), { passive: false }
-					]
+					].forEach(index => window.addEventListener(...index));
 
-				].forEach(index => window.addEventListener(...index));
+					for(const instance in editor.timeoutProcess) editor.timeoutProcess[instance]();
 
-				for(const instance in editor.timeoutProcess) editor.timeoutProcess[instance]();
+					document.getElementById("input").value = "\n"
 
-				document.getElementById("input").value = "\n"
+					document.getElementById("input").focus();
 
-				document.getElementById("input").focus();
-
+				}
 			}
 		</script>
 
