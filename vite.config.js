@@ -1,4 +1,7 @@
+import { viteSingleFile } from "vite-plugin-singlefile";
+
 export default {
 	root: "./src/",
-	base: "/arave/"
+	base: "/arave/",
+	plugins: [viteSingleFile()]
 }
